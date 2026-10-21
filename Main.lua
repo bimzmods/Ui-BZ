@@ -292,7 +292,8 @@ return function()
 
     function API:GetToggle(name)
         local e = registry[name]
-        return e and e.get() or nil
+        if e then return e.get() end
+        return nil
     end
 
     function API:SetToggle(name, value, silent)
