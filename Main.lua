@@ -648,5 +648,8 @@ API.Instances = {
     Colors = C,
 }
 
+-- Kompatibel dengan loader lama: loadstring(...)() maupun loadstring(...)()()
+setmetatable(API, {__call = function(self) return self end})
+
 print("[BZ] Menu UI v1.5 module ready.")
 return API
