@@ -6,13 +6,11 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 local guiName = "BZ_Menu_GUI"
 
--- Bersihkan instance lama
 local old = CoreGui:FindFirstChild(guiName)
 if old then old:Destroy() end
 old = player:WaitForChild("PlayerGui"):FindFirstChild(guiName)
 if old then old:Destroy() end
 
--- === Konfigurasi ===
 local CFG = {
     Colors = {
         Bg        = Color3.fromRGB(18, 13, 28),
@@ -41,7 +39,6 @@ local CFG = {
 local C = CFG.Colors
 local Font, FontBold = CFG.Font, CFG.FontBold
 
--- === ScreenGui ===
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = guiName
 screenGui.ResetOnSpawn = false
@@ -50,7 +47,6 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local ok = pcall(function() screenGui.Parent = CoreGui end)
 if not ok then screenGui.Parent = player:WaitForChild("PlayerGui") end
 
--- === Logo ===
 local logo = Instance.new("Frame", screenGui)
 logo.Name = "Logo"
 logo.Size = UDim2.fromOffset(56, 56)
@@ -71,7 +67,6 @@ logoText.Font = FontBold
 logoText.TextSize = 22
 logoText.TextColor3 = C.Accent
 
--- === Menu ===
 local menu = Instance.new("Frame", screenGui)
 menu.Name = "Menu"
 menu.Size = UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
@@ -85,7 +80,6 @@ local menuStroke = Instance.new("UIStroke", menu)
 menuStroke.Color = C.Stroke
 menuStroke.Thickness = 1.5
 
--- Header
 local header = Instance.new("Frame", menu)
 header.Name = "Header"
 header.Size = UDim2.new(1, 0, 0, CFG.HeaderH)
@@ -141,7 +135,6 @@ closeIcon.Font = FontBold
 closeIcon.TextSize = 20
 closeIcon.TextColor3 = C.TextDim
 
--- Body
 local body = Instance.new("ScrollingFrame", menu)
 body.Name = "Body"
 body.Size = UDim2.new(1, 0, 1, -CFG.HeaderH)
@@ -167,7 +160,6 @@ bodyPad.PaddingBottom = UDim.new(0, 28)
 bodyPad.PaddingLeft = UDim.new(0, 16)
 bodyPad.PaddingRight = UDim.new(0, 16)
 
--- Resize
 local resizeHandle = Instance.new("Frame", menu)
 resizeHandle.Name = "ResizeHandle"
 resizeHandle.Size = UDim2.fromOffset(16, 16)
@@ -194,17 +186,15 @@ resizeHandle.MouseLeave:Connect(function()
     TweenService:Create(resizeHandle, TweenInfo.new(0.12), {BackgroundTransparency = 0.55}):Play()
 end)
 
--- === Registry ===
-local registry = {}      -- name -> { set, get, row, kind }
+local registry = {}
 local layoutCounter = 0
-local activeSlider = nil -- fungsi update(x) slider yang lagi di-drag
+local activeSlider = nil
 
 local function nextOrder()
     layoutCounter = layoutCounter + 1
     return layoutCounter
 end
 
--- === Public builder API ===
 local API = {}
 
 function API:AddSection(text)
@@ -292,14 +282,13 @@ function API:AddToggle(name, labelText, default, callback)
     return registry[name]
 end
 
--- Slider angka: AddSlider(name, label, min, max, default, callback, step)
 function API:AddSlider(name, labelText, min, max, default, callback, step)
     min = min or 0
     max = max or 100
     if max <= min then max = min + 1 end
     local hasDefault = default ~= nil
     default = default or min
-    -- step otomatis: 1 kalau semua angka bulat, 0.01 kalau ada desimal
+
     if not step then
         local isInt = (min % 1 == 0) and (max % 1 == 0) and (default % 1 == 0)
         step = isInt and 1 or 0.01
@@ -334,7 +323,6 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- kotak angka: bisa diketik langsung (contoh 0.5, 1.25)
     local valLbl = Instance.new("TextBox", row)
     valLbl.Size = UDim2.fromOffset(70, 24)
     valLbl.Position = UDim2.new(1, -84, 0, 6)
@@ -372,7 +360,6 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     knobStroke.Color = C.Accent
     knobStroke.Thickness = 2
 
-    -- area sentuh lebih besar dari track
     local hit = Instance.new("TextButton", row)
     hit.Size = UDim2.new(1, -16, 0, 28)
     hit.Position = UDim2.new(0, 8, 0, 31)
@@ -453,7 +440,6 @@ function API:RemoveItem(name)
     registry[name] = nil
 end
 
--- === Posisi menu deket logo (hanya untuk buka pertama kali) ===
 local function computeMenuPos()
     local cam = workspace.CurrentCamera
     local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
@@ -474,7 +460,6 @@ local function computeMenuPos()
     return UDim2.fromOffset(px, py)
 end
 
--- Pastikan posisi tersimpan masih di dalam layar (misal ukuran layar berubah)
 local function clampPos(pos, size)
     local cam = workspace.CurrentCamera
     local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
@@ -483,9 +468,8 @@ local function clampPos(pos, size)
     return UDim2.fromOffset(x, y)
 end
 
--- === Open / Close / Toggle ===
 local isOpen = false
-local lastPos, lastSize = nil, nil -- posisi & ukuran terakhir menu
+local lastPos, lastSize = nil, nil
 local closeToken = 0
 
 function API:Open()
@@ -511,7 +495,7 @@ end
 function API:Close()
     if not isOpen then return end
     isOpen = false
-    lastPos = menu.Position -- simpan posisi terakhir
+    lastPos = menu.Position
     local fullSize = lastSize or UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
     closeToken = closeToken + 1
     local token = closeToken
@@ -534,7 +518,6 @@ function API:IsOpen()
     return isOpen
 end
 
--- === Drag Logo ===
 local dragLogo, logoStart, logoStartPos = false, nil, nil
 logo.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -545,7 +528,6 @@ logo.InputBegan:Connect(function(input)
     end
 end)
 
--- === Drag Menu ===
 local dragMenu, menuStart, menuStartPos = false, nil, nil
 header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -556,7 +538,6 @@ header.InputBegan:Connect(function(input)
     end
 end)
 
--- === Resize ===
 local resizing, resizeStart, resizeStartSize = false, nil, nil
 resizeHandle.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -611,10 +592,10 @@ UserInputService.InputEnded:Connect(function(input)
             dragLogo = false
         end
         if dragMenu then
-            lastPos = menu.Position -- simpan posisi setelah digeser
+            lastPos = menu.Position
         end
         if resizing then
-            lastSize = UDim2.fromOffset(menu.AbsoluteSize.X, menu.AbsoluteSize.Y) -- simpan ukuran
+            lastSize = UDim2.fromOffset(menu.AbsoluteSize.X, menu.AbsoluteSize.Y)
         end
         dragMenu = false
         resizing = false
@@ -639,12 +620,10 @@ logo.MouseLeave:Connect(function()
     TweenService:Create(logoStroke, TweenInfo.new(0.15), {Thickness = 1.5}):Play()
 end)
 
--- === Destroy ===
 function API:Destroy()
     if screenGui then screenGui:Destroy() end
 end
 
--- === Instance getter (buat advanced pakai) ===
 API.Instances = {
     ScreenGui = screenGui,
     Logo = logo,
@@ -655,7 +634,6 @@ API.Instances = {
     Colors = C,
 }
 
--- Kompatibel dengan loader lama: loadstring(...)() maupun loadstring(...)()()
 setmetatable(API, {__call = function(self) return self end})
 
 print("[BZ] Menu UI v1.5 module ready.")
