@@ -1,18 +1,3 @@
--- BZ Menu UI v1.5 | Studio The Clown (tema ungu)
--- Pakai:
---   local BZ = loadstring(game:HttpGet("URL"))()
---   BZ:AddSection("Movement")
---   BZ:AddSlider("speed", "Speed", 16, 200, 16, function(v)
---       local h = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
---       if h then h.WalkSpeed = v end
---   end, 1)
---   BZ:AddSlider("jump", "Jump Power", 50, 300, 50, function(v)
---       local h = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
---       if h then h.UseJumpPower = true h.JumpPower = v end
---   end, 5)
---   BZ:AddToggle("aimbot", "Aimbot", false, function(on) print("aimbot", on) end)
---   BZ:Open() BZ:Close() BZ:SetToggle("aimbot", true) BZ:SetSlider("speed", 50) BZ:GetSlider("speed")
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -311,9 +296,22 @@ end
 function API:AddSlider(name, labelText, min, max, default, callback, step)
     min = min or 0
     max = max or 100
-    step = step or 1
     if max <= min then max = min + 1 end
-    local value = math.clamp(default or min, min, max)
+    local hasDefault = default ~= nil
+    default = default or min
+    -- step otomatis: 1 kalau semua angka bulat, 0.01 kalau ada desimal
+    if not step then
+        local isInt = (min % 1 == 0) and (max % 1 == 0) and (default % 1 == 0)
+        step = isInt and 1 or 0.01
+    end
+    local function decimalsOf(n)
+        local s = string.format("%.6f", n):gsub("0+$", ""):gsub("%.$", "")
+        local frac = s:match("%.(%d+)$")
+        return frac and #frac or 0
+    end
+    local decimals = math.max(decimalsOf(step), decimalsOf(min))
+    local pow = 10 ^ decimals
+    local value = math.clamp(default, min, max)
 
     local row = Instance.new("Frame", body)
     row.Name = name .. "_Row"
@@ -327,7 +325,7 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     s.Thickness = 1
 
     local lbl = Instance.new("TextLabel", row)
-    lbl.Size = UDim2.new(1, -90, 0, 24)
+    lbl.Size = UDim2.new(1, -100, 0, 24)
     lbl.Position = UDim2.fromOffset(14, 6)
     lbl.BackgroundTransparency = 1
     lbl.Text = labelText or name
@@ -336,14 +334,18 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local valLbl = Instance.new("TextLabel", row)
-    valLbl.Size = UDim2.fromOffset(64, 24)
-    valLbl.Position = UDim2.new(1, -78, 0, 6)
-    valLbl.BackgroundTransparency = 1
+    -- kotak angka: bisa diketik langsung (contoh 0.5, 1.25)
+    local valLbl = Instance.new("TextBox", row)
+    valLbl.Size = UDim2.fromOffset(70, 24)
+    valLbl.Position = UDim2.new(1, -84, 0, 6)
+    valLbl.BackgroundColor3 = C.Surface2
+    valLbl.BorderSizePixel = 0
+    valLbl.ClearTextOnFocus = false
     valLbl.Font = FontBold
-    valLbl.TextSize = 14
+    valLbl.TextSize = 13
     valLbl.TextColor3 = C.Accent
-    valLbl.TextXAlignment = Enum.TextXAlignment.Right
+    valLbl.TextXAlignment = Enum.TextXAlignment.Center
+    Instance.new("UICorner", valLbl).CornerRadius = UDim.new(0, 6)
 
     local track = Instance.new("Frame", row)
     track.Size = UDim2.new(1, -28, 0, 6)
@@ -383,12 +385,12 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
         v = math.clamp(v, min, max)
         v = min + math.floor((v - min) / step + 0.5) * step
         v = math.clamp(v, min, max)
-        v = math.floor(v * 1000 + 0.5) / 1000
+        v = math.floor(v * pow + 0.5) / pow
         value = v
         local a = (v - min) / (max - min)
         fill.Size = UDim2.new(a, 0, 1, 0)
         knob.Position = UDim2.new(a, 0, 0.5, 0)
-        valLbl.Text = tostring(v)
+        valLbl.Text = string.format("%." .. decimals .. "f", v)
         if not silent and callback then pcall(callback, v) end
     end
 
@@ -406,8 +408,13 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
         end
     end)
 
+    valLbl.FocusLost:Connect(function()
+        local n = tonumber(valLbl.Text)
+        if n then setValue(n) else setValue(value, true) end
+    end)
+
     setValue(value, true)
-    if default and callback then pcall(callback, value) end
+    if hasDefault and callback then pcall(callback, value) end
 
     registry[name] = {
         kind = "slider",
