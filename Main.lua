@@ -459,7 +459,7 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     s.Thickness = 1
 
     local lbl = Instance.new("TextLabel", row)
-    lbl.Size = UDim2.new(1, -70, 1, 0)
+    lbl.Size = UDim2.new(1, -60, 1, 0)
     lbl.Position = UDim2.fromOffset(14, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text = labelText or name
@@ -470,18 +470,18 @@ function API:AddTapToggleOneClick(name, labelText, callback)
 
     -- Ikon tap: lingkaran dengan titik di tengah + efek riak saat diklik
     local icon = Instance.new("Frame", row)
-    icon.Size = UDim2.fromOffset(32, 32)
+    icon.Size = UDim2.fromOffset(22, 22)
     icon.AnchorPoint = Vector2.new(0.5, 0.5)
-    icon.Position = UDim2.new(1, -30, 0.5, 0)
+    icon.Position = UDim2.new(1, -26, 0.5, 0)
     icon.BackgroundColor3 = C.Surface2
     icon.BorderSizePixel = 0
     Instance.new("UICorner", icon).CornerRadius = UDim.new(1, 0)
     local iconStroke = Instance.new("UIStroke", icon)
     iconStroke.Color = C.Accent
-    iconStroke.Thickness = 1.5
+    iconStroke.Thickness = 1.25
 
     local dot = Instance.new("Frame", icon)
-    dot.Size = UDim2.fromOffset(10, 10)
+    dot.Size = UDim2.fromOffset(6, 6)
     dot.AnchorPoint = Vector2.new(0.5, 0.5)
     dot.Position = UDim2.fromScale(0.5, 0.5)
     dot.BackgroundColor3 = C.Accent
@@ -489,7 +489,7 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
 
     local ripple = Instance.new("Frame", icon)
-    ripple.Size = UDim2.fromOffset(10, 10)
+    ripple.Size = UDim2.fromOffset(6, 6)
     ripple.AnchorPoint = Vector2.new(0.5, 0.5)
     ripple.Position = UDim2.fromScale(0.5, 0.5)
     ripple.BackgroundTransparency = 1
@@ -498,7 +498,7 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     Instance.new("UICorner", ripple).CornerRadius = UDim.new(1, 0)
     local rippleStroke = Instance.new("UIStroke", ripple)
     rippleStroke.Color = C.Accent
-    rippleStroke.Thickness = 2
+    rippleStroke.Thickness = 1.5
 
     local clickArea = Instance.new("TextButton", row)
     clickArea.Size = UDim2.fromScale(1, 1)
@@ -510,11 +510,11 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     local function play()
         TweenService:Create(icon, TweenInfo.new(0.1), {BackgroundColor3 = C.Accent}):Play()
         TweenService:Create(dot, TweenInfo.new(0.1), {BackgroundColor3 = C.Text}):Play()
-        ripple.Size = UDim2.fromOffset(10, 10)
+        ripple.Size = UDim2.fromOffset(6, 6)
         rippleStroke.Transparency = 0
         ripple.Visible = true
         TweenService:Create(ripple, TweenInfo.new(0.35, Enum.EasingStyle.Quart), {
-            Size = UDim2.fromOffset(36, 36)
+            Size = UDim2.fromOffset(26, 26)
         }):Play()
         TweenService:Create(rippleStroke, TweenInfo.new(0.35), {Transparency = 1}):Play()
     end
