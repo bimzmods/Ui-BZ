@@ -26,8 +26,8 @@ local CFG = {
     },
     Font      = Enum.Font.GothamMedium,
     FontBold  = Enum.Font.GothamBold,
-    MenuWDef  = 280,
-    MenuHDef  = 380,
+    MenuWDef  = 520,
+    MenuHDef  = 720,
     MenuWMin  = 220,
     MenuHMin  = 240,
     MenuWMax  = 520,
@@ -1096,6 +1096,19 @@ local function clampPos(pos, size)
     return UDim2.fromOffset(x, y)
 end
 
+local function menuMaxSize()
+    local cam = workspace.CurrentCamera
+    local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+    local w = math.max(math.min(CFG.MenuWMax, vp.X - CFG.ScreenPad * 2), CFG.MenuWMin)
+    local h = math.max(math.min(CFG.MenuHMax, vp.Y - CFG.ScreenPad * 2), CFG.MenuHMin)
+    return w, h
+end
+
+local function defaultMenuSize()
+    local w, h = menuMaxSize()
+    return UDim2.fromOffset(w, h)
+end
+
 local isOpen = false
 local lastPos, lastSize = nil, nil
 local closeToken = 0
@@ -1113,7 +1126,7 @@ function API:Open()
     end
     logo.Visible = false
 
-    local targetSize = lastSize or UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
+    local targetSize = lastSize or defaultMenuSize()
     menu.Size = targetSize
     if lastPos then
         menu.Position = clampPos(lastPos, targetSize)
@@ -1132,7 +1145,7 @@ function API:Close()
     isOpen = false
     if activeSelectClose then activeSelectClose() end
     lastPos = menu.Position
-    local fullSize = lastSize or UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
+    local fullSize = lastSize or defaultMenuSize()
     closeToken = closeToken + 1
     local token = closeToken
     TweenService:Create(menu, TweenInfo.new(0.18, Enum.EasingStyle.Quart), {
@@ -1211,8 +1224,9 @@ UserInputService.InputChanged:Connect(function(input)
         end
         if resizing and resizeStart then
             local d = input.Position - resizeStart
-            local w = math.clamp(resizeStartSize.X + d.X, CFG.MenuWMin, CFG.MenuWMax)
-            local h = math.clamp(resizeStartSize.Y + d.Y, CFG.MenuHMin, CFG.MenuHMax)
+            local maxW, maxH = menuMaxSize()
+            local w = math.clamp(resizeStartSize.X + d.X, CFG.MenuWMin, maxW)
+            local h = math.clamp(resizeStartSize.Y + d.Y, CFG.MenuHMin, maxH)
             menu.Size = UDim2.fromOffset(w, h)
         end
     end
