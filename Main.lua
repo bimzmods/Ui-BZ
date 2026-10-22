@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
@@ -35,9 +36,35 @@ local CFG = {
     LogoGap   = 12,
     ScreenPad = 10,
     LogoStart = UDim2.new(0, 40, 0.5, -28),
+    ConfigFile = "BZ_Menu_Config.json",
 }
 local C = CFG.Colors
 local Font, FontBold = CFG.Font, CFG.FontBold
+
+local function palette(t)
+    return {
+        Bg = Color3.fromRGB(t[1][1], t[1][2], t[1][3]),
+        Surface = Color3.fromRGB(t[2][1], t[2][2], t[2][3]),
+        Surface2 = Color3.fromRGB(t[3][1], t[3][2], t[3][3]),
+        Accent = Color3.fromRGB(t[4][1], t[4][2], t[4][3]),
+        Text = Color3.fromRGB(t[5][1], t[5][2], t[5][3]),
+        TextDim = Color3.fromRGB(t[6][1], t[6][2], t[6][3]),
+        Stroke = Color3.fromRGB(t[7][1], t[7][2], t[7][3]),
+        On = Color3.fromRGB(t[8][1], t[8][2], t[8][3]),
+        Off = Color3.fromRGB(t[9][1], t[9][2], t[9][3]),
+    }
+end
+
+local THEME_ORDER = { "Cyan", "Kuning", "Merah", "Ungu", "Sakura", "White", "Black" }
+local THEMES = {
+    Ungu   = palette({{18,13,28},{28,21,43},{41,31,62},{157,90,255},{240,235,252},{165,152,190},{78,56,118},{170,100,255},{70,58,95}}),
+    Cyan   = palette({{10,20,26},{16,32,42},{24,46,60},{0,200,230},{232,248,252},{140,175,188},{30,80,98},{30,220,240},{50,72,84}}),
+    Kuning = palette({{24,21,10},{38,33,14},{54,47,20},{250,204,21},{252,248,230},{190,178,140},{104,88,28},{255,215,60},{84,76,48}}),
+    Merah  = palette({{26,12,14},{40,18,22},{58,26,32},{239,68,68},{252,236,236},{192,148,150},{110,40,46},{248,90,90},{88,56,60}}),
+    Sakura = palette({{36,22,30},{50,31,42},{68,42,57},{255,143,184},{255,240,246},{205,160,180},{120,70,96},{255,166,200},{100,70,86}}),
+    White  = palette({{245,245,248},{232,232,238},{218,218,226},{37,99,235},{30,30,38},{110,110,125},{200,200,210},{70,190,110},{180,180,190}}),
+    Black  = palette({{8,8,8},{18,18,18},{32,32,32},{230,230,230},{245,245,245},{140,140,140},{58,58,58},{125,125,132},{64,64,64}}),
+}
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = guiName
@@ -113,7 +140,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.new(0, 18, 1, -22)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v1.9 · Studio The Clown"
+subtitle.Text = "v2.0 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -215,6 +242,31 @@ end)
 
 local registry = {}
 local layoutCounter = 0
+
+local function readConfig()
+    if typeof(isfile) ~= "function" or typeof(readfile) ~= "function" then return nil end
+    local okf, exists = pcall(isfile, CFG.ConfigFile)
+    if not okf or not exists then return nil end
+    local okr, raw = pcall(readfile, CFG.ConfigFile)
+    if not okr then return nil end
+    local okd, data = pcall(function() return HttpService:JSONDecode(raw) end)
+    if okd and type(data) == "table" and type(data.items) == "table" then
+        return data.items
+    end
+    return nil
+end
+
+local pendingConfig = readConfig() or {}
+
+local function applyPending(name)
+    local v = pendingConfig[name]
+    local e = registry[name]
+    if v == nil or not e then return end
+    local want = (e.kind == "toggle" and "boolean")
+        or (e.kind == "slider" and "number")
+        or (e.kind == "select" and "string")
+    if want and type(v) == want then e.set(v) end
+end
 local activeSlider = nil
 local activeInput = nil
 local activeBody = nil
@@ -252,7 +304,7 @@ function API:SelectCategory(name)
         local on = (n == name)
         TweenService:Create(cat.button, TweenInfo.new(0.15), {
             BackgroundColor3 = on and C.Accent or C.Surface2,
-            TextColor3 = on and C.Text or C.TextDim,
+            TextColor3 = on and C.Bg or C.TextDim,
         }):Play()
     end
 
@@ -425,6 +477,7 @@ function API:AddToggle(name, labelText, default, callback)
         row = row,
     }
     if default and callback then pcall(callback, true) end
+    applyPending(name)
     return registry[name]
 end
 
@@ -534,7 +587,7 @@ function API:AddTapToggleOneClick(name, labelText, callback)
 
     local function play()
         TweenService:Create(icon, TweenInfo.new(0.1), {BackgroundColor3 = C.Accent}):Play()
-        TweenService:Create(dot, TweenInfo.new(0.1), {BackgroundColor3 = C.Text}):Play()
+        TweenService:Create(dot, TweenInfo.new(0.1), {BackgroundColor3 = C.Bg}):Play()
         ripple.Size = UDim2.fromOffset(6, 6)
         rippleStroke.Transparency = 0
         ripple.Visible = true
@@ -570,6 +623,208 @@ function API:AddTapToggleOneClick(name, labelText, callback)
         row = row,
     }
     return registry[name]
+end
+
+function API:AddSelectMenu(name, labelText, options, default, callback)
+    options = options or {}
+    local HEAD_H, ITEM_H, PAD = 46, 32, 6
+    local listH = #options * ITEM_H + PAD * 2
+
+    local row = Instance.new("Frame", currentBody())
+    row.Name = name .. "_Row"
+    row.Size = UDim2.new(1, 0, 0, HEAD_H)
+    row.BackgroundColor3 = C.Surface
+    row.BorderSizePixel = 0
+    row.ClipsDescendants = true
+    row.LayoutOrder = nextOrder()
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    local s = Instance.new("UIStroke", row)
+    s.Color = C.Stroke
+    s.Thickness = 1
+
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(0.5, -14, 0, HEAD_H)
+    lbl.Position = UDim2.fromOffset(14, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText or name
+    lbl.Font = Font
+    lbl.TextSize = 14
+    lbl.TextColor3 = C.Text
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local valLbl = Instance.new("TextLabel", row)
+    valLbl.AnchorPoint = Vector2.new(1, 0)
+    valLbl.Size = UDim2.new(0.5, -36, 0, HEAD_H)
+    valLbl.Position = UDim2.new(1, -34, 0, 0)
+    valLbl.BackgroundTransparency = 1
+    valLbl.Font = FontBold
+    valLbl.TextSize = 13
+    valLbl.TextColor3 = C.Accent
+    valLbl.TextXAlignment = Enum.TextXAlignment.Right
+    valLbl.TextTruncate = Enum.TextTruncate.AtEnd
+
+    local arrow = Instance.new("TextLabel", row)
+    arrow.Size = UDim2.fromOffset(16, HEAD_H)
+    arrow.Position = UDim2.new(1, -28, 0, 0)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = "▼"
+    arrow.Font = FontBold
+    arrow.TextSize = 10
+    arrow.TextColor3 = C.TextDim
+
+    local list = Instance.new("Frame", row)
+    list.Position = UDim2.fromOffset(0, HEAD_H)
+    list.Size = UDim2.new(1, 0, 0, listH)
+    list.BackgroundTransparency = 1
+    list.BorderSizePixel = 0
+
+    local head = Instance.new("TextButton", row)
+    head.Size = UDim2.new(1, 0, 0, HEAD_H)
+    head.BackgroundTransparency = 1
+    head.Text = ""
+    head.ZIndex = 3
+
+    local selected = nil
+    local optionButtons = {}
+
+    local function refresh()
+        for opt, b in pairs(optionButtons) do
+            local sel = (opt == selected)
+            b.BackgroundColor3 = sel and C.Accent or C.Surface2
+            b.TextColor3 = sel and C.Bg or C.Text
+        end
+    end
+
+    local function setSelected(v, silent)
+        if optionButtons[v] == nil then return end
+        selected = v
+        valLbl.Text = tostring(v)
+        refresh()
+        if not silent and callback then pcall(callback, v) end
+    end
+
+    local open = false
+    local function setOpen(o)
+        open = o
+        TweenService:Create(row, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {
+            Size = UDim2.new(1, 0, 0, o and (HEAD_H + listH) or HEAD_H)
+        }):Play()
+        TweenService:Create(arrow, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {
+            Rotation = o and 180 or 0
+        }):Play()
+    end
+
+    for i, opt in ipairs(options) do
+        local b = Instance.new("TextButton", list)
+        b.Name = "Opt_" .. tostring(opt)
+        b.Size = UDim2.new(1, -20, 0, ITEM_H - 4)
+        b.Position = UDim2.fromOffset(10, PAD + (i - 1) * ITEM_H)
+        b.BackgroundColor3 = C.Surface2
+        b.BorderSizePixel = 0
+        b.AutoButtonColor = false
+        b.Text = tostring(opt)
+        b.Font = Font
+        b.TextSize = 13
+        b.TextColor3 = C.Text
+        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+        optionButtons[opt] = b
+        b.MouseButton1Click:Connect(function()
+            setSelected(opt)
+            setOpen(false)
+        end)
+    end
+
+    head.MouseButton1Click:Connect(function() setOpen(not open) end)
+
+    local initial = options[1]
+    if default ~= nil and optionButtons[default] ~= nil then initial = default end
+    if initial ~= nil then setSelected(initial, true) end
+
+    registry[name] = {
+        kind = "select",
+        set = setSelected,
+        get = function() return selected end,
+        row = row,
+    }
+    if default ~= nil and callback and selected ~= nil then pcall(callback, selected) end
+    applyPending(name)
+    return registry[name]
+end
+
+function API:GetSelect(name)
+    local e = registry[name]
+    if e and e.kind == "select" then return e.get() end
+    return nil
+end
+
+function API:SetSelect(name, value, silent)
+    local e = registry[name]
+    if e and e.kind == "select" then e.set(value, silent) end
+end
+
+function API:SetTheme(themeName)
+    local newT = THEMES[themeName]
+    if not newT then return false end
+
+    local keyOfHex = {}
+    for k, v in pairs(C) do keyOfHex[v:ToHex()] = k end
+    for k, v in pairs(newT) do C[k] = v end
+
+    local function map(c)
+        local k = keyOfHex[c:ToHex()]
+        if k then return C[k] end
+        return c
+    end
+
+    for _, inst in ipairs(screenGui:GetDescendants()) do
+        if inst:IsA("GuiObject") then
+            inst.BackgroundColor3 = map(inst.BackgroundColor3)
+        end
+        if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
+            inst.TextColor3 = map(inst.TextColor3)
+        end
+        if inst:IsA("ScrollingFrame") then
+            inst.ScrollBarImageColor3 = map(inst.ScrollBarImageColor3)
+        end
+        if inst:IsA("UIStroke") then
+            inst.Color = map(inst.Color)
+        end
+        if inst:IsA("UIGradient") then
+            local pts = {}
+            for i, kp in ipairs(inst.Color.Keypoints) do
+                pts[i] = ColorSequenceKeypoint.new(kp.Time, map(kp.Value))
+            end
+            inst.Color = ColorSequence.new(pts)
+        end
+    end
+    return true
+end
+
+function API:SaveConfig()
+    if typeof(writefile) ~= "function" then
+        return false, "writefile tidak didukung executor"
+    end
+    local items = {}
+    for name, e in pairs(registry) do
+        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" then
+            items[name] = e.get()
+        end
+    end
+    local okj, json = pcall(function()
+        return HttpService:JSONEncode({ version = 1, items = items })
+    end)
+    if not okj then return false, "gagal membuat JSON config" end
+    local okw, err = pcall(writefile, CFG.ConfigFile, json)
+    if not okw then return false, tostring(err) end
+    return true
+end
+
+function API:LoadConfig()
+    local items = readConfig()
+    if not items then return false end
+    pendingConfig = items
+    for name in pairs(registry) do applyPending(name) end
+    return true
 end
 
 function API:AddSlider(name, labelText, min, max, default, callback, step)
@@ -703,6 +958,7 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
         get = function() return value end,
         row = row,
     }
+    applyPending(name)
     return registry[name]
 end
 
@@ -770,8 +1026,12 @@ function API:Open()
     if isOpen then return end
     isOpen = true
     closeToken = closeToken + 1
-    if not selectedCat and categories["devtools"] then
-        API:SelectCategory("devtools")
+    if not selectedCat then
+        if categories["ui"] then
+            API:SelectCategory("ui")
+        elseif categories["devtools"] then
+            API:SelectCategory("devtools")
+        end
     end
     logo.Visible = false
 
@@ -914,7 +1174,7 @@ closeBtn.MouseButton1Click:Connect(function() API:Close() end)
 
 closeBtn.MouseEnter:Connect(function()
     TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = C.Accent}):Play()
-    TweenService:Create(closeIcon, TweenInfo.new(0.12), {TextColor3 = C.Text}):Play()
+    TweenService:Create(closeIcon, TweenInfo.new(0.12), {TextColor3 = C.Bg}):Play()
 end)
 closeBtn.MouseLeave:Connect(function()
     TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = C.Surface2}):Play()
@@ -942,6 +1202,44 @@ API.Instances = {
     ResizeHandle = resizeHandle,
     Colors = C,
 }
+
+local function buildUICategory()
+    local prev = currentCat
+    createCategory("ui", "UI", true, { order = 9998, noSelect = true })
+    currentCat = "ui"
+
+    API:AddSection("Logo")
+    API:AddSlider("ui_logo_size", "Logo Size", 36, 96, 56, function(v)
+        logo.Size = UDim2.fromOffset(v, v)
+        logoText.TextSize = math.floor(v * 0.39)
+        local corner = logo:FindFirstChildOfClass("UICorner")
+        if corner then corner.CornerRadius = UDim.new(0, math.floor(v * 0.25)) end
+    end, 1)
+    API:AddSlider("ui_logo_alpha", "Logo Transparan (%)", 0, 90, 0, function(v)
+        local a = v / 100
+        logo.BackgroundTransparency = a
+        logoStroke.Transparency = a
+        logoText.TextTransparency = a
+    end, 5)
+
+    API:AddSection("Thema")
+    API:AddSelectMenu("ui_theme", "Thema", THEME_ORDER, "Ungu", function(v)
+        API:SetTheme(v)
+    end)
+
+    API:AddSection("Config")
+    local cfgStatus
+    API:AddTapToggleOneClick("ui_save_config", "Save Config", function()
+        local ok, err = API:SaveConfig()
+        if cfgStatus then
+            cfgStatus:SetText(ok and "✔ Config tersimpan" or ("✘ " .. tostring(err)))
+        end
+    end)
+    cfgStatus = API:AddNote("Save Config menyimpan semua toggle, slider, dan pilihan. Otomatis dimuat saat script dijalankan.")
+
+    currentCat = prev
+end
+buildUICategory()
 
 local DEV_USERNAME = "BimzDnu"
 
@@ -1022,5 +1320,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v1.9 module ready.")
+print("[BZ] Menu UI v2.0 module ready.")
 return API
