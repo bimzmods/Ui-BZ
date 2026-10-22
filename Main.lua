@@ -119,7 +119,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.new(0, 18, 1, -22)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v1.7 · Studio The Clown"
+subtitle.Text = "v1.8 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -459,7 +459,7 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     s.Thickness = 1
 
     local lbl = Instance.new("TextLabel", row)
-    lbl.Size = UDim2.new(1, -80, 1, 0)
+    lbl.Size = UDim2.new(1, -70, 1, 0)
     lbl.Position = UDim2.fromOffset(14, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text = labelText or name
@@ -468,19 +468,37 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local track = Instance.new("Frame", row)
-    track.Size = UDim2.fromOffset(46, 24)
-    track.Position = UDim2.new(1, -60, 0.5, -12)
-    track.BackgroundColor3 = C.Off
-    track.BorderSizePixel = 0
-    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+    -- Ikon tap: lingkaran dengan titik di tengah + efek riak saat diklik
+    local icon = Instance.new("Frame", row)
+    icon.Size = UDim2.fromOffset(32, 32)
+    icon.AnchorPoint = Vector2.new(0.5, 0.5)
+    icon.Position = UDim2.new(1, -30, 0.5, 0)
+    icon.BackgroundColor3 = C.Surface2
+    icon.BorderSizePixel = 0
+    Instance.new("UICorner", icon).CornerRadius = UDim.new(1, 0)
+    local iconStroke = Instance.new("UIStroke", icon)
+    iconStroke.Color = C.Accent
+    iconStroke.Thickness = 1.5
 
-    local knob = Instance.new("Frame", track)
-    knob.Size = UDim2.fromOffset(18, 18)
-    knob.Position = UDim2.fromOffset(3, 3)
-    knob.BackgroundColor3 = C.Text
-    knob.BorderSizePixel = 0
-    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+    local dot = Instance.new("Frame", icon)
+    dot.Size = UDim2.fromOffset(10, 10)
+    dot.AnchorPoint = Vector2.new(0.5, 0.5)
+    dot.Position = UDim2.fromScale(0.5, 0.5)
+    dot.BackgroundColor3 = C.Accent
+    dot.BorderSizePixel = 0
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+
+    local ripple = Instance.new("Frame", icon)
+    ripple.Size = UDim2.fromOffset(10, 10)
+    ripple.AnchorPoint = Vector2.new(0.5, 0.5)
+    ripple.Position = UDim2.fromScale(0.5, 0.5)
+    ripple.BackgroundTransparency = 1
+    ripple.BorderSizePixel = 0
+    ripple.Visible = false
+    Instance.new("UICorner", ripple).CornerRadius = UDim.new(1, 0)
+    local rippleStroke = Instance.new("UIStroke", ripple)
+    rippleStroke.Color = C.Accent
+    rippleStroke.Thickness = 2
 
     local clickArea = Instance.new("TextButton", row)
     clickArea.Size = UDim2.fromScale(1, 1)
@@ -488,22 +506,32 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     clickArea.Text = ""
 
     local busy = false
-    local function visual(on)
-        TweenService:Create(track, TweenInfo.new(0.15, Enum.EasingStyle.Quart), {
-            BackgroundColor3 = on and C.On or C.Off
+
+    local function play()
+        TweenService:Create(icon, TweenInfo.new(0.1), {BackgroundColor3 = C.Accent}):Play()
+        TweenService:Create(dot, TweenInfo.new(0.1), {BackgroundColor3 = C.Text}):Play()
+        ripple.Size = UDim2.fromOffset(10, 10)
+        rippleStroke.Transparency = 0
+        ripple.Visible = true
+        TweenService:Create(ripple, TweenInfo.new(0.35, Enum.EasingStyle.Quart), {
+            Size = UDim2.fromOffset(36, 36)
         }):Play()
-        TweenService:Create(knob, TweenInfo.new(0.15, Enum.EasingStyle.Quart), {
-            Position = on and UDim2.fromOffset(25, 3) or UDim2.fromOffset(3, 3)
-        }):Play()
+        TweenService:Create(rippleStroke, TweenInfo.new(0.35), {Transparency = 1}):Play()
+    end
+
+    local function reset()
+        TweenService:Create(icon, TweenInfo.new(0.2), {BackgroundColor3 = C.Surface2}):Play()
+        TweenService:Create(dot, TweenInfo.new(0.2), {BackgroundColor3 = C.Accent}):Play()
+        ripple.Visible = false
     end
 
     local function fire()
         if busy then return end -- tap beruntun diabaikan: tetap sekali panggil
         busy = true
-        visual(true)
+        play()
         if callback then pcall(callback) end
         task.delay(0.35, function()
-            visual(false)
+            reset()
             busy = false
         end)
     end
@@ -983,5 +1011,5 @@ buildDevTools()
 -- Kompatibel dengan loader lama: loadstring(...)() maupun loadstring(...)()()
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v1.7 module ready.")
+print("[BZ] Menu UI v1.8 module ready.")
 return API
