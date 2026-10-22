@@ -119,7 +119,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.new(0, 18, 1, -22)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v1.6 · Studio The Clown"
+subtitle.Text = "v1.7 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -264,7 +264,7 @@ function API:SelectCategory(name)
     end
 end
 
-local function createCategory(name, labelText, explicit)
+local function createCategory(name, labelText, explicit, opts)
     if categories[name] then return categories[name] end
     categoryOrder = categoryOrder + 1
 
@@ -278,7 +278,7 @@ local function createCategory(name, labelText, explicit)
     btn.Font = FontBold
     btn.TextSize = 12
     btn.TextColor3 = C.TextDim
-    btn.LayoutOrder = categoryOrder
+    btn.LayoutOrder = (opts and opts.order) or categoryOrder
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
     local p = Instance.new("UIPadding", btn)
     p.PaddingLeft = UDim.new(0, 14)
@@ -290,7 +290,7 @@ local function createCategory(name, labelText, explicit)
 
     if explicit then tabBar.Visible = true end
     relayout()
-    if not selectedCat then API:SelectCategory(name) end
+    if not selectedCat and not (opts and opts.noSelect) then API:SelectCategory(name) end
     return cat
 end
 
@@ -396,6 +396,126 @@ function API:AddToggle(name, labelText, default, callback)
         row = row,
     }
     if default and callback then pcall(callback, true) end
+    return registry[name]
+end
+
+-- Catatan teks saja (tidak bisa diklik): AddNote("isi catatan", name?) -> handle:SetText("baru")
+function API:AddNote(text, name)
+    local order = nextOrder()
+    local row = Instance.new("Frame", currentBody())
+    row.Name = (name or ("note_" .. order)) .. "_Row"
+    row.Size = UDim2.new(1, 0, 0, 0)
+    row.AutomaticSize = Enum.AutomaticSize.Y
+    row.BackgroundColor3 = C.Surface
+    row.BorderSizePixel = 0
+    row.LayoutOrder = order
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    local s = Instance.new("UIStroke", row)
+    s.Color = C.Stroke
+    s.Thickness = 1
+
+    local pad = Instance.new("UIPadding", row)
+    pad.PaddingTop = UDim.new(0, 10)
+    pad.PaddingBottom = UDim.new(0, 10)
+    pad.PaddingLeft = UDim.new(0, 14)
+    pad.PaddingRight = UDim.new(0, 14)
+
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(1, 0, 0, 0)
+    lbl.AutomaticSize = Enum.AutomaticSize.Y
+    lbl.BackgroundTransparency = 1
+    lbl.Text = tostring(text or "")
+    lbl.Font = Font
+    lbl.TextSize = 13
+    lbl.TextColor3 = C.TextDim
+    lbl.TextWrapped = true
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextYAlignment = Enum.TextYAlignment.Top
+
+    local handle = { row = row, label = lbl }
+    function handle:SetText(t) lbl.Text = tostring(t) end
+
+    registry[name or ("note_" .. order)] = {
+        kind = "note",
+        set = function(t) lbl.Text = tostring(t) end,
+        get = function() return lbl.Text end,
+        row = row,
+    }
+    return handle
+end
+
+-- Tombol bergaya toggle yang tiap tap hanya memanggil callback SATU kali,
+-- lalu otomatis kembali ke posisi off (tidak menyimpan state).
+function API:AddTapToggleOneClick(name, labelText, callback)
+    local row = Instance.new("Frame", currentBody())
+    row.Name = name .. "_Row"
+    row.Size = UDim2.new(1, 0, 0, 46)
+    row.BackgroundColor3 = C.Surface
+    row.BorderSizePixel = 0
+    row.LayoutOrder = nextOrder()
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    local s = Instance.new("UIStroke", row)
+    s.Color = C.Stroke
+    s.Thickness = 1
+
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(1, -80, 1, 0)
+    lbl.Position = UDim2.fromOffset(14, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText or name
+    lbl.Font = Font
+    lbl.TextSize = 14
+    lbl.TextColor3 = C.Text
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local track = Instance.new("Frame", row)
+    track.Size = UDim2.fromOffset(46, 24)
+    track.Position = UDim2.new(1, -60, 0.5, -12)
+    track.BackgroundColor3 = C.Off
+    track.BorderSizePixel = 0
+    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+
+    local knob = Instance.new("Frame", track)
+    knob.Size = UDim2.fromOffset(18, 18)
+    knob.Position = UDim2.fromOffset(3, 3)
+    knob.BackgroundColor3 = C.Text
+    knob.BorderSizePixel = 0
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+    local clickArea = Instance.new("TextButton", row)
+    clickArea.Size = UDim2.fromScale(1, 1)
+    clickArea.BackgroundTransparency = 1
+    clickArea.Text = ""
+
+    local busy = false
+    local function visual(on)
+        TweenService:Create(track, TweenInfo.new(0.15, Enum.EasingStyle.Quart), {
+            BackgroundColor3 = on and C.On or C.Off
+        }):Play()
+        TweenService:Create(knob, TweenInfo.new(0.15, Enum.EasingStyle.Quart), {
+            Position = on and UDim2.fromOffset(25, 3) or UDim2.fromOffset(3, 3)
+        }):Play()
+    end
+
+    local function fire()
+        if busy then return end -- tap beruntun diabaikan: tetap sekali panggil
+        busy = true
+        visual(true)
+        if callback then pcall(callback) end
+        task.delay(0.35, function()
+            visual(false)
+            busy = false
+        end)
+    end
+
+    clickArea.MouseButton1Click:Connect(fire)
+
+    registry[name] = {
+        kind = "tap",
+        set = fire,
+        get = function() return busy end,
+        row = row,
+    }
     return registry[name]
 end
 
@@ -603,6 +723,9 @@ function API:Open()
     if isOpen then return end
     isOpen = true
     closeToken = closeToken + 1
+    if not selectedCat and categories["devtools"] then
+        API:SelectCategory("devtools")
+    end
     logo.Visible = false
 
     local targetSize = lastSize or UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
@@ -778,8 +901,87 @@ API.Instances = {
     Colors = C,
 }
 
+-- === Dev Tools (hanya muncul untuk username "BimzDnu") ===
+local DEV_USERNAME = "BimzDnu"
+
+local function copyText(text)
+    local fn = (typeof(setclipboard) == "function" and setclipboard)
+        or (typeof(toclipboard) == "function" and toclipboard)
+    if not fn then return false end
+    return (pcall(fn, text))
+end
+
+local function getPos()
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    return hrp and hrp.Position or nil
+end
+
+local function buildDevTools()
+    if string.lower(player.Name) ~= string.lower(DEV_USERNAME) then return end
+
+    local prev = currentCat
+    createCategory("devtools", "Dev Tools", true, { order = 9999, noSelect = true })
+    currentCat = "devtools"
+
+    local status -- catatan status, dibuat paling bawah
+    local function report(ok, what)
+        if not status then return end
+        if ok then
+            status:SetText("✔ Tersalin: " .. what)
+        else
+            status:SetText("✘ Executor tidak support clipboard")
+        end
+    end
+
+    API:AddSection("Koordinat")
+    local posNote = API:AddNote("Posisi: -")
+    API:AddTapToggleOneClick("dev_copy_xyz", "Copy Coordinate", function()
+        local p = getPos()
+        if not p then status:SetText("✘ Karakter belum ada") return end
+        local s = string.format("%.2f, %.2f, %.2f", p.X, p.Y, p.Z)
+        report(copyText(s), s)
+    end)
+    API:AddTapToggleOneClick("dev_copy_vec3", "Copy sebagai Vector3", function()
+        local p = getPos()
+        if not p then status:SetText("✘ Karakter belum ada") return end
+        local s = string.format("Vector3.new(%.2f, %.2f, %.2f)", p.X, p.Y, p.Z)
+        report(copyText(s), s)
+    end)
+
+    API:AddSection("Place / Game ID")
+    API:AddNote("Place ID: " .. tostring(game.PlaceId) .. "\nGame ID: " .. tostring(game.GameId))
+    API:AddTapToggleOneClick("dev_copy_place", "Copy Place ID", function()
+        local s = tostring(game.PlaceId)
+        report(copyText(s), s)
+    end)
+    API:AddTapToggleOneClick("dev_copy_game", "Copy Game ID", function()
+        local s = tostring(game.GameId)
+        report(copyText(s), s)
+    end)
+
+    status = API:AddNote("Status: siap")
+
+    -- Update koordinat live (hanya saat tab Dev Tools sedang tampil)
+    task.spawn(function()
+        while screenGui.Parent do
+            task.wait(0.25)
+            local cat = categories["devtools"]
+            if isOpen and cat and cat.body.Visible then
+                local p = getPos()
+                posNote:SetText(p
+                    and string.format("Posisi: X %.2f  Y %.2f  Z %.2f", p.X, p.Y, p.Z)
+                    or "Posisi: karakter belum ada")
+            end
+        end
+    end)
+
+    currentCat = prev
+end
+buildDevTools()
+
 -- Kompatibel dengan loader lama: loadstring(...)() maupun loadstring(...)()()
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v1.6 module ready.")
+print("[BZ] Menu UI v1.7 module ready.")
 return API
