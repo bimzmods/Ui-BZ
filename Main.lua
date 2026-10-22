@@ -6,13 +6,11 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 local guiName = "BZ_Menu_GUI"
 
--- Bersihkan instance lama
 local old = CoreGui:FindFirstChild(guiName)
 if old then old:Destroy() end
 old = player:WaitForChild("PlayerGui"):FindFirstChild(guiName)
 if old then old:Destroy() end
 
--- === Konfigurasi ===
 local CFG = {
     Colors = {
         Bg        = Color3.fromRGB(18, 13, 28),
@@ -41,7 +39,6 @@ local CFG = {
 local C = CFG.Colors
 local Font, FontBold = CFG.Font, CFG.FontBold
 
--- === ScreenGui ===
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = guiName
 screenGui.ResetOnSpawn = false
@@ -50,7 +47,6 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local ok = pcall(function() screenGui.Parent = CoreGui end)
 if not ok then screenGui.Parent = player:WaitForChild("PlayerGui") end
 
--- === Logo ===
 local logo = Instance.new("Frame", screenGui)
 logo.Name = "Logo"
 logo.Size = UDim2.fromOffset(56, 56)
@@ -71,7 +67,6 @@ logoText.Font = FontBold
 logoText.TextSize = 22
 logoText.TextColor3 = C.Accent
 
--- === Menu ===
 local menu = Instance.new("Frame", screenGui)
 menu.Name = "Menu"
 menu.Size = UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
@@ -85,7 +80,6 @@ local menuStroke = Instance.new("UIStroke", menu)
 menuStroke.Color = C.Stroke
 menuStroke.Thickness = 1.5
 
--- Header
 local header = Instance.new("Frame", menu)
 header.Name = "Header"
 header.Size = UDim2.new(1, 0, 0, CFG.HeaderH)
@@ -119,7 +113,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.new(0, 18, 1, -22)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v1.8 · Studio The Clown"
+subtitle.Text = "v1.9 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -141,7 +135,6 @@ closeIcon.Font = FontBold
 closeIcon.TextSize = 20
 closeIcon.TextColor3 = C.TextDim
 
--- Tab kategori (muncul kalau ada AddCategory)
 local TAB_H = 38
 local tabBar = Instance.new("ScrollingFrame", menu)
 tabBar.Name = "TabBar"
@@ -165,7 +158,6 @@ local tabPad = Instance.new("UIPadding", tabBar)
 tabPad.PaddingLeft = UDim.new(0, 16)
 tabPad.PaddingRight = UDim.new(0, 16)
 
--- Body (satu ScrollingFrame per kategori)
 local function makeBody()
     local b = Instance.new("ScrollingFrame", menu)
     b.Name = "Body"
@@ -195,7 +187,6 @@ local function makeBody()
     return b
 end
 
--- Resize
 local resizeHandle = Instance.new("Frame", menu)
 resizeHandle.Name = "ResizeHandle"
 resizeHandle.Size = UDim2.fromOffset(16, 16)
@@ -222,46 +213,86 @@ resizeHandle.MouseLeave:Connect(function()
     TweenService:Create(resizeHandle, TweenInfo.new(0.12), {BackgroundTransparency = 0.55}):Play()
 end)
 
--- === Registry ===
-local registry = {}      -- name -> { set, get, row, kind }
+local registry = {}
 local layoutCounter = 0
-local activeSlider = nil -- fungsi update(x) slider yang lagi di-drag
-local activeInput = nil  -- input (jari/mouse) yang mengunci slider itu
-local activeBody = nil   -- body yang scroll-nya dimatikan selama drag
+local activeSlider = nil
+local activeInput = nil
+local activeBody = nil
 
 local function nextOrder()
     layoutCounter = layoutCounter + 1
     return layoutCounter
 end
 
--- === Public builder API ===
 local API = {}
 
--- === Kategori ===
-local categories = {}    -- name -> { body, button }
+local categories = {}
 local categoryOrder = 0
-local currentCat = nil   -- kategori tujuan item baru
-local selectedCat = nil  -- kategori yang sedang tampil
+local currentCat = nil
+local selectedCat = nil
 
 local function relayout()
     local top = CFG.HeaderH + (tabBar.Visible and TAB_H or 0)
     for _, cat in pairs(categories) do
-        cat.body.Position = UDim2.fromOffset(0, top)
+        cat.body.Position = UDim2.new(cat.body.Position.X.Scale, 0, 0, top)
         cat.body.Size = UDim2.new(1, 0, 1, -top)
     end
 end
 
+local animToken = 0
+local SLIDE_TIME = 0.25
+
 function API:SelectCategory(name)
-    if not categories[name] then return end
+    local target = categories[name]
+    if not target or selectedCat == name then return end
+    local prev = selectedCat and categories[selectedCat]
     selectedCat = name
+
     for n, cat in pairs(categories) do
         local on = (n == name)
-        cat.body.Visible = on
         TweenService:Create(cat.button, TweenInfo.new(0.15), {
             BackgroundColor3 = on and C.Accent or C.Surface2,
             TextColor3 = on and C.Text or C.TextDim,
         }):Play()
     end
+
+    local y = target.body.Position.Y.Offset
+
+    if not prev or not menu.Visible then
+        animToken = animToken + 1
+        for _, cat in pairs(categories) do
+            cat.body.Visible = (cat == target)
+            cat.body.Position = UDim2.new(0, 0, 0, y)
+        end
+        return
+    end
+
+    local dir = (target.button.LayoutOrder > prev.button.LayoutOrder) and 1 or -1
+
+    animToken = animToken + 1
+    local token = animToken
+
+    for _, cat in pairs(categories) do
+        if cat ~= prev and cat ~= target then
+            cat.body.Visible = false
+            cat.body.Position = UDim2.new(0, 0, 0, y)
+        end
+    end
+
+    if not target.body.Visible then
+        target.body.Position = UDim2.new(dir, 0, 0, y)
+        target.body.Visible = true
+    end
+
+    local info = TweenInfo.new(SLIDE_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    TweenService:Create(target.body, info, {Position = UDim2.new(0, 0, 0, y)}):Play()
+    TweenService:Create(prev.body, info, {Position = UDim2.new(-dir, 0, 0, y)}):Play()
+
+    task.delay(SLIDE_TIME + 0.02, function()
+        if token ~= animToken then return end
+        prev.body.Visible = false
+        prev.body.Position = UDim2.new(0, 0, 0, y)
+    end)
 end
 
 local function createCategory(name, labelText, explicit, opts)
@@ -294,14 +325,12 @@ local function createCategory(name, labelText, explicit, opts)
     return cat
 end
 
--- BZ:AddCategory("esp", "ESP") -> item yang ditambah setelahnya masuk kategori ini
 function API:AddCategory(name, labelText)
     createCategory(name, labelText, true)
     currentCat = name
     return categories[name]
 end
 
--- Pindah target item ke kategori yang sudah ada (tanpa bikin baru)
 function API:UseCategory(name)
     if categories[name] then currentCat = name end
 end
@@ -399,7 +428,6 @@ function API:AddToggle(name, labelText, default, callback)
     return registry[name]
 end
 
--- Catatan teks saja (tidak bisa diklik): AddNote("isi catatan", name?) -> handle:SetText("baru")
 function API:AddNote(text, name)
     local order = nextOrder()
     local row = Instance.new("Frame", currentBody())
@@ -444,8 +472,6 @@ function API:AddNote(text, name)
     return handle
 end
 
--- Tombol bergaya toggle yang tiap tap hanya memanggil callback SATU kali,
--- lalu otomatis kembali ke posisi off (tidak menyimpan state).
 function API:AddTapToggleOneClick(name, labelText, callback)
     local row = Instance.new("Frame", currentBody())
     row.Name = name .. "_Row"
@@ -468,7 +494,6 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- Ikon tap: lingkaran dengan titik di tengah + efek riak saat diklik
     local icon = Instance.new("Frame", row)
     icon.Size = UDim2.fromOffset(22, 22)
     icon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -526,7 +551,7 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     end
 
     local function fire()
-        if busy then return end -- tap beruntun diabaikan: tetap sekali panggil
+        if busy then return end
         busy = true
         play()
         if callback then pcall(callback) end
@@ -547,14 +572,13 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     return registry[name]
 end
 
--- Slider angka: AddSlider(name, label, min, max, default, callback, step)
 function API:AddSlider(name, labelText, min, max, default, callback, step)
     min = min or 0
     max = max or 100
     if max <= min then max = min + 1 end
     local hasDefault = default ~= nil
     default = default or min
-    -- step otomatis: 1 kalau semua angka bulat, 0.01 kalau ada desimal
+
     if not step then
         local isInt = (min % 1 == 0) and (max % 1 == 0) and (default % 1 == 0)
         step = isInt and 1 or 0.01
@@ -590,7 +614,6 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- kotak angka: bisa diketik langsung (contoh 0.5, 1.25)
     local valLbl = Instance.new("TextBox", row)
     valLbl.Size = UDim2.fromOffset(70, 24)
     valLbl.Position = UDim2.new(1, -84, 0, 6)
@@ -628,7 +651,6 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     knobStroke.Color = C.Accent
     knobStroke.Thickness = 2
 
-    -- area sentuh lebih besar dari track
     local hit = Instance.new("TextButton", row)
     hit.Size = UDim2.new(1, -16, 0, 28)
     hit.Position = UDim2.new(0, 8, 0, 31)
@@ -656,7 +678,7 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     end
 
     hit.InputBegan:Connect(function(input)
-        if activeSlider then return end -- sudah ada slider yang aktif, abaikan
+        if activeSlider then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
             activeSlider = updateFromX
@@ -712,7 +734,6 @@ function API:RemoveItem(name)
     registry[name] = nil
 end
 
--- === Posisi menu deket logo (hanya untuk buka pertama kali) ===
 local function computeMenuPos()
     local cam = workspace.CurrentCamera
     local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
@@ -733,7 +754,6 @@ local function computeMenuPos()
     return UDim2.fromOffset(px, py)
 end
 
--- Pastikan posisi tersimpan masih di dalam layar (misal ukuran layar berubah)
 local function clampPos(pos, size)
     local cam = workspace.CurrentCamera
     local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
@@ -742,9 +762,8 @@ local function clampPos(pos, size)
     return UDim2.fromOffset(x, y)
 end
 
--- === Open / Close / Toggle ===
 local isOpen = false
-local lastPos, lastSize = nil, nil -- posisi & ukuran terakhir menu
+local lastPos, lastSize = nil, nil
 local closeToken = 0
 
 function API:Open()
@@ -773,7 +792,7 @@ end
 function API:Close()
     if not isOpen then return end
     isOpen = false
-    lastPos = menu.Position -- simpan posisi terakhir
+    lastPos = menu.Position
     local fullSize = lastSize or UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
     closeToken = closeToken + 1
     local token = closeToken
@@ -796,7 +815,6 @@ function API:IsOpen()
     return isOpen
 end
 
--- === Drag Logo ===
 local dragLogo, logoStart, logoStartPos = false, nil, nil
 logo.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -807,7 +825,6 @@ logo.InputBegan:Connect(function(input)
     end
 end)
 
--- === Drag Menu ===
 local dragMenu, menuStart, menuStartPos = false, nil, nil
 header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -818,7 +835,6 @@ header.InputBegan:Connect(function(input)
     end
 end)
 
--- === Resize ===
 local resizing, resizeStart, resizeStartSize = false, nil, nil
 resizeHandle.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -884,10 +900,10 @@ UserInputService.InputEnded:Connect(function(input)
             dragLogo = false
         end
         if dragMenu then
-            lastPos = menu.Position -- simpan posisi setelah digeser
+            lastPos = menu.Position
         end
         if resizing then
-            lastSize = UDim2.fromOffset(menu.AbsoluteSize.X, menu.AbsoluteSize.Y) -- simpan ukuran
+            lastSize = UDim2.fromOffset(menu.AbsoluteSize.X, menu.AbsoluteSize.Y)
         end
         dragMenu = false
         resizing = false
@@ -912,12 +928,10 @@ logo.MouseLeave:Connect(function()
     TweenService:Create(logoStroke, TweenInfo.new(0.15), {Thickness = 1.5}):Play()
 end)
 
--- === Destroy ===
 function API:Destroy()
     if screenGui then screenGui:Destroy() end
 end
 
--- === Instance getter (buat advanced pakai) ===
 API.Instances = {
     ScreenGui = screenGui,
     Logo = logo,
@@ -929,7 +943,6 @@ API.Instances = {
     Colors = C,
 }
 
--- === Dev Tools (hanya muncul untuk username "BimzDnu") ===
 local DEV_USERNAME = "BimzDnu"
 
 local function copyText(text)
@@ -952,7 +965,7 @@ local function buildDevTools()
     createCategory("devtools", "Dev Tools", true, { order = 9999, noSelect = true })
     currentCat = "devtools"
 
-    local status -- catatan status, dibuat paling bawah
+    local status
     local function report(ok, what)
         if not status then return end
         if ok then
@@ -990,7 +1003,6 @@ local function buildDevTools()
 
     status = API:AddNote("Status: siap")
 
-    -- Update koordinat live (hanya saat tab Dev Tools sedang tampil)
     task.spawn(function()
         while screenGui.Parent do
             task.wait(0.25)
@@ -1008,8 +1020,7 @@ local function buildDevTools()
 end
 buildDevTools()
 
--- Kompatibel dengan loader lama: loadstring(...)() maupun loadstring(...)()()
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v1.8 module ready.")
+print("[BZ] Menu UI v1.9 module ready.")
 return API
