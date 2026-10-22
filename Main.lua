@@ -6,11 +6,13 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 local guiName = "BZ_Menu_GUI"
 
+-- Bersihkan instance lama
 local old = CoreGui:FindFirstChild(guiName)
 if old then old:Destroy() end
 old = player:WaitForChild("PlayerGui"):FindFirstChild(guiName)
 if old then old:Destroy() end
 
+-- === Konfigurasi ===
 local CFG = {
     Colors = {
         Bg        = Color3.fromRGB(18, 13, 28),
@@ -39,6 +41,7 @@ local CFG = {
 local C = CFG.Colors
 local Font, FontBold = CFG.Font, CFG.FontBold
 
+-- === ScreenGui ===
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = guiName
 screenGui.ResetOnSpawn = false
@@ -47,6 +50,7 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local ok = pcall(function() screenGui.Parent = CoreGui end)
 if not ok then screenGui.Parent = player:WaitForChild("PlayerGui") end
 
+-- === Logo ===
 local logo = Instance.new("Frame", screenGui)
 logo.Name = "Logo"
 logo.Size = UDim2.fromOffset(56, 56)
@@ -67,6 +71,7 @@ logoText.Font = FontBold
 logoText.TextSize = 22
 logoText.TextColor3 = C.Accent
 
+-- === Menu ===
 local menu = Instance.new("Frame", screenGui)
 menu.Name = "Menu"
 menu.Size = UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
@@ -80,6 +85,7 @@ local menuStroke = Instance.new("UIStroke", menu)
 menuStroke.Color = C.Stroke
 menuStroke.Thickness = 1.5
 
+-- Header
 local header = Instance.new("Frame", menu)
 header.Name = "Header"
 header.Size = UDim2.new(1, 0, 0, CFG.HeaderH)
@@ -113,7 +119,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.new(0, 18, 1, -22)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v1.5 · Studio The Clown"
+subtitle.Text = "v1.6 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -135,31 +141,61 @@ closeIcon.Font = FontBold
 closeIcon.TextSize = 20
 closeIcon.TextColor3 = C.TextDim
 
-local body = Instance.new("ScrollingFrame", menu)
-body.Name = "Body"
-body.Size = UDim2.new(1, 0, 1, -CFG.HeaderH)
-body.Position = UDim2.fromOffset(0, CFG.HeaderH)
-body.BackgroundTransparency = 1
-body.BorderSizePixel = 0
-body.ScrollBarThickness = 6
-body.ScrollBarImageColor3 = C.Accent
-body.ScrollBarImageTransparency = 0.3
-body.CanvasSize = UDim2.new(0, 0, 0, 0)
-body.AutomaticCanvasSize = Enum.AutomaticSize.Y
-body.ScrollingDirection = Enum.ScrollingDirection.Y
-body.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+-- Tab kategori (muncul kalau ada AddCategory)
+local TAB_H = 38
+local tabBar = Instance.new("ScrollingFrame", menu)
+tabBar.Name = "TabBar"
+tabBar.Size = UDim2.new(1, 0, 0, TAB_H)
+tabBar.Position = UDim2.fromOffset(0, CFG.HeaderH)
+tabBar.BackgroundTransparency = 1
+tabBar.BorderSizePixel = 0
+tabBar.ScrollBarThickness = 0
+tabBar.CanvasSize = UDim2.new(0, 0, 0, 0)
+tabBar.AutomaticCanvasSize = Enum.AutomaticSize.X
+tabBar.ScrollingDirection = Enum.ScrollingDirection.X
+tabBar.Visible = false
 
-local bodyLayout = Instance.new("UIListLayout", body)
-bodyLayout.Padding = UDim.new(0, 10)
-bodyLayout.SortOrder = Enum.SortOrder.LayoutOrder
-bodyLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local tabLayout = Instance.new("UIListLayout", tabBar)
+tabLayout.FillDirection = Enum.FillDirection.Horizontal
+tabLayout.Padding = UDim.new(0, 8)
+tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 
-local bodyPad = Instance.new("UIPadding", body)
-bodyPad.PaddingTop = UDim.new(0, 16)
-bodyPad.PaddingBottom = UDim.new(0, 28)
-bodyPad.PaddingLeft = UDim.new(0, 16)
-bodyPad.PaddingRight = UDim.new(0, 16)
+local tabPad = Instance.new("UIPadding", tabBar)
+tabPad.PaddingLeft = UDim.new(0, 16)
+tabPad.PaddingRight = UDim.new(0, 16)
 
+-- Body (satu ScrollingFrame per kategori)
+local function makeBody()
+    local b = Instance.new("ScrollingFrame", menu)
+    b.Name = "Body"
+    b.Size = UDim2.new(1, 0, 1, -CFG.HeaderH)
+    b.Position = UDim2.fromOffset(0, CFG.HeaderH)
+    b.BackgroundTransparency = 1
+    b.BorderSizePixel = 0
+    b.ScrollBarThickness = 6
+    b.ScrollBarImageColor3 = C.Accent
+    b.ScrollBarImageTransparency = 0.3
+    b.CanvasSize = UDim2.new(0, 0, 0, 0)
+    b.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    b.ScrollingDirection = Enum.ScrollingDirection.Y
+    b.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+    b.Visible = false
+
+    local layout = Instance.new("UIListLayout", b)
+    layout.Padding = UDim.new(0, 10)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local pad = Instance.new("UIPadding", b)
+    pad.PaddingTop = UDim.new(0, 12)
+    pad.PaddingBottom = UDim.new(0, 28)
+    pad.PaddingLeft = UDim.new(0, 16)
+    pad.PaddingRight = UDim.new(0, 16)
+    return b
+end
+
+-- Resize
 local resizeHandle = Instance.new("Frame", menu)
 resizeHandle.Name = "ResizeHandle"
 resizeHandle.Size = UDim2.fromOffset(16, 16)
@@ -186,19 +222,100 @@ resizeHandle.MouseLeave:Connect(function()
     TweenService:Create(resizeHandle, TweenInfo.new(0.12), {BackgroundTransparency = 0.55}):Play()
 end)
 
-local registry = {}
+-- === Registry ===
+local registry = {}      -- name -> { set, get, row, kind }
 local layoutCounter = 0
-local activeSlider = nil
+local activeSlider = nil -- fungsi update(x) slider yang lagi di-drag
+local activeInput = nil  -- input (jari/mouse) yang mengunci slider itu
+local activeBody = nil   -- body yang scroll-nya dimatikan selama drag
 
 local function nextOrder()
     layoutCounter = layoutCounter + 1
     return layoutCounter
 end
 
+-- === Public builder API ===
 local API = {}
 
+-- === Kategori ===
+local categories = {}    -- name -> { body, button }
+local categoryOrder = 0
+local currentCat = nil   -- kategori tujuan item baru
+local selectedCat = nil  -- kategori yang sedang tampil
+
+local function relayout()
+    local top = CFG.HeaderH + (tabBar.Visible and TAB_H or 0)
+    for _, cat in pairs(categories) do
+        cat.body.Position = UDim2.fromOffset(0, top)
+        cat.body.Size = UDim2.new(1, 0, 1, -top)
+    end
+end
+
+function API:SelectCategory(name)
+    if not categories[name] then return end
+    selectedCat = name
+    for n, cat in pairs(categories) do
+        local on = (n == name)
+        cat.body.Visible = on
+        TweenService:Create(cat.button, TweenInfo.new(0.15), {
+            BackgroundColor3 = on and C.Accent or C.Surface2,
+            TextColor3 = on and C.Text or C.TextDim,
+        }):Play()
+    end
+end
+
+local function createCategory(name, labelText, explicit)
+    if categories[name] then return categories[name] end
+    categoryOrder = categoryOrder + 1
+
+    local btn = Instance.new("TextButton", tabBar)
+    btn.Name = name .. "_Tab"
+    btn.AutomaticSize = Enum.AutomaticSize.X
+    btn.Size = UDim2.fromOffset(0, 28)
+    btn.BackgroundColor3 = C.Surface2
+    btn.AutoButtonColor = false
+    btn.Text = labelText or name
+    btn.Font = FontBold
+    btn.TextSize = 12
+    btn.TextColor3 = C.TextDim
+    btn.LayoutOrder = categoryOrder
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    local p = Instance.new("UIPadding", btn)
+    p.PaddingLeft = UDim.new(0, 14)
+    p.PaddingRight = UDim.new(0, 14)
+
+    local cat = { body = makeBody(), button = btn }
+    categories[name] = cat
+    btn.MouseButton1Click:Connect(function() API:SelectCategory(name) end)
+
+    if explicit then tabBar.Visible = true end
+    relayout()
+    if not selectedCat then API:SelectCategory(name) end
+    return cat
+end
+
+-- BZ:AddCategory("esp", "ESP") -> item yang ditambah setelahnya masuk kategori ini
+function API:AddCategory(name, labelText)
+    createCategory(name, labelText, true)
+    currentCat = name
+    return categories[name]
+end
+
+-- Pindah target item ke kategori yang sudah ada (tanpa bikin baru)
+function API:UseCategory(name)
+    if categories[name] then currentCat = name end
+end
+
+local function currentBody()
+    if not currentCat then
+        createCategory("main", "Main", false)
+        currentCat = "main"
+    end
+    return categories[currentCat].body
+end
+
 function API:AddSection(text)
-    local lbl = Instance.new("TextLabel", body)
+    local lbl = Instance.new("TextLabel", currentBody())
     lbl.Size = UDim2.new(1, 0, 0, 20)
     lbl.BackgroundTransparency = 1
     lbl.Text = string.upper(text)
@@ -211,7 +328,7 @@ function API:AddSection(text)
 end
 
 function API:AddToggle(name, labelText, default, callback)
-    local row = Instance.new("Frame", body)
+    local row = Instance.new("Frame", currentBody())
     row.Name = name .. "_Row"
     row.Size = UDim2.new(1, 0, 0, 46)
     row.BackgroundColor3 = C.Surface
@@ -282,13 +399,14 @@ function API:AddToggle(name, labelText, default, callback)
     return registry[name]
 end
 
+-- Slider angka: AddSlider(name, label, min, max, default, callback, step)
 function API:AddSlider(name, labelText, min, max, default, callback, step)
     min = min or 0
     max = max or 100
     if max <= min then max = min + 1 end
     local hasDefault = default ~= nil
     default = default or min
-
+    -- step otomatis: 1 kalau semua angka bulat, 0.01 kalau ada desimal
     if not step then
         local isInt = (min % 1 == 0) and (max % 1 == 0) and (default % 1 == 0)
         step = isInt and 1 or 0.01
@@ -302,7 +420,8 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     local pow = 10 ^ decimals
     local value = math.clamp(default, min, max)
 
-    local row = Instance.new("Frame", body)
+    local parentBody = currentBody()
+    local row = Instance.new("Frame", parentBody)
     row.Name = name .. "_Row"
     row.Size = UDim2.new(1, 0, 0, 62)
     row.BackgroundColor3 = C.Surface
@@ -323,6 +442,7 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
+    -- kotak angka: bisa diketik langsung (contoh 0.5, 1.25)
     local valLbl = Instance.new("TextBox", row)
     valLbl.Size = UDim2.fromOffset(70, 24)
     valLbl.Position = UDim2.new(1, -84, 0, 6)
@@ -360,6 +480,7 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     knobStroke.Color = C.Accent
     knobStroke.Thickness = 2
 
+    -- area sentuh lebih besar dari track
     local hit = Instance.new("TextButton", row)
     hit.Size = UDim2.new(1, -16, 0, 28)
     hit.Position = UDim2.new(0, 8, 0, 31)
@@ -387,10 +508,13 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     end
 
     hit.InputBegan:Connect(function(input)
+        if activeSlider then return end -- sudah ada slider yang aktif, abaikan
         if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
             activeSlider = updateFromX
-            body.ScrollingEnabled = false
+            activeInput = input
+            activeBody = parentBody
+            parentBody.ScrollingEnabled = false
             updateFromX(input.Position.X)
         end
     end)
@@ -440,6 +564,7 @@ function API:RemoveItem(name)
     registry[name] = nil
 end
 
+-- === Posisi menu deket logo (hanya untuk buka pertama kali) ===
 local function computeMenuPos()
     local cam = workspace.CurrentCamera
     local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
@@ -460,6 +585,7 @@ local function computeMenuPos()
     return UDim2.fromOffset(px, py)
 end
 
+-- Pastikan posisi tersimpan masih di dalam layar (misal ukuran layar berubah)
 local function clampPos(pos, size)
     local cam = workspace.CurrentCamera
     local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
@@ -468,8 +594,9 @@ local function clampPos(pos, size)
     return UDim2.fromOffset(x, y)
 end
 
+-- === Open / Close / Toggle ===
 local isOpen = false
-local lastPos, lastSize = nil, nil
+local lastPos, lastSize = nil, nil -- posisi & ukuran terakhir menu
 local closeToken = 0
 
 function API:Open()
@@ -495,7 +622,7 @@ end
 function API:Close()
     if not isOpen then return end
     isOpen = false
-    lastPos = menu.Position
+    lastPos = menu.Position -- simpan posisi terakhir
     local fullSize = lastSize or UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
     closeToken = closeToken + 1
     local token = closeToken
@@ -518,6 +645,7 @@ function API:IsOpen()
     return isOpen
 end
 
+-- === Drag Logo ===
 local dragLogo, logoStart, logoStartPos = false, nil, nil
 logo.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -528,6 +656,7 @@ logo.InputBegan:Connect(function(input)
     end
 end)
 
+-- === Drag Menu ===
 local dragMenu, menuStart, menuStartPos = false, nil, nil
 header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -538,6 +667,7 @@ header.InputBegan:Connect(function(input)
     end
 end)
 
+-- === Resize ===
 local resizing, resizeStart, resizeStartSize = false, nil, nil
 resizeHandle.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -551,8 +681,13 @@ end)
 UserInputService.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement
     or input.UserInputType == Enum.UserInputType.Touch then
-        if activeSlider then
-            activeSlider(input.Position.X)
+        if activeSlider and activeInput then
+            local sameTouch = (input == activeInput)
+            local mouseMove = activeInput.UserInputType == Enum.UserInputType.MouseButton1
+                and input.UserInputType == Enum.UserInputType.MouseMovement
+            if sameTouch or mouseMove then
+                activeSlider(input.Position.X)
+            end
         end
         if dragLogo and logoStart then
             local d = input.Position - logoStart
@@ -580,9 +715,15 @@ end)
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
     or input.UserInputType == Enum.UserInputType.Touch then
-        if activeSlider then
+        if activeSlider and activeInput and (input == activeInput
+            or (activeInput.UserInputType == Enum.UserInputType.MouseButton1
+                and input.UserInputType == Enum.UserInputType.MouseButton1)) then
             activeSlider = nil
-            body.ScrollingEnabled = true
+            activeInput = nil
+            if activeBody then
+                activeBody.ScrollingEnabled = true
+                activeBody = nil
+            end
         end
         if dragLogo then
             local d = input.Position - logoStart
@@ -592,10 +733,10 @@ UserInputService.InputEnded:Connect(function(input)
             dragLogo = false
         end
         if dragMenu then
-            lastPos = menu.Position
+            lastPos = menu.Position -- simpan posisi setelah digeser
         end
         if resizing then
-            lastSize = UDim2.fromOffset(menu.AbsoluteSize.X, menu.AbsoluteSize.Y)
+            lastSize = UDim2.fromOffset(menu.AbsoluteSize.X, menu.AbsoluteSize.Y) -- simpan ukuran
         end
         dragMenu = false
         resizing = false
@@ -620,21 +761,25 @@ logo.MouseLeave:Connect(function()
     TweenService:Create(logoStroke, TweenInfo.new(0.15), {Thickness = 1.5}):Play()
 end)
 
+-- === Destroy ===
 function API:Destroy()
     if screenGui then screenGui:Destroy() end
 end
 
+-- === Instance getter (buat advanced pakai) ===
 API.Instances = {
     ScreenGui = screenGui,
     Logo = logo,
     Menu = menu,
     Header = header,
-    Body = body,
+    Categories = categories,
+    TabBar = tabBar,
     ResizeHandle = resizeHandle,
     Colors = C,
 }
 
+-- Kompatibel dengan loader lama: loadstring(...)() maupun loadstring(...)()()
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v1.5 module ready.")
+print("[BZ] Menu UI v1.6 module ready.")
 return API
