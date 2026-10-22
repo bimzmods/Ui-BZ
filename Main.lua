@@ -141,7 +141,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.new(0, 18, 1, -22)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v2.1 · Studio The Clown"
+subtitle.Text = "v2.2 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -266,12 +266,12 @@ local function applyPending(name)
     local want = (e.kind == "toggle" and "boolean")
         or (e.kind == "slider" and "number")
         or (e.kind == "select" and "string")
-        or (e.kind == "text" and "string")
     if want and type(v) == want then e.set(v) end
 end
 local activeSlider = nil
 local activeInput = nil
 local activeBody = nil
+local activeSelectClose = nil
 
 local function nextOrder()
     layoutCounter = layoutCounter + 1
@@ -627,83 +627,18 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     return registry[name]
 end
 
-function API:AddTextInput(name, labelText, default, callback, maxLen)
-    local row = Instance.new("Frame", currentBody())
-    row.Name = name .. "_Row"
-    row.Size = UDim2.new(1, 0, 0, 66)
-    row.BackgroundColor3 = C.Surface
-    row.BorderSizePixel = 0
-    row.LayoutOrder = nextOrder()
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
-    local s = Instance.new("UIStroke", row)
-    s.Color = C.Stroke
-    s.Thickness = 1
-
-    local lbl = Instance.new("TextLabel", row)
-    lbl.Size = UDim2.new(1, -28, 0, 24)
-    lbl.Position = UDim2.fromOffset(14, 6)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = labelText or name
-    lbl.Font = Font
-    lbl.TextSize = 14
-    lbl.TextColor3 = C.Text
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-    local box = Instance.new("TextBox", row)
-    box.Size = UDim2.new(1, -28, 0, 28)
-    box.Position = UDim2.fromOffset(14, 32)
-    box.BackgroundColor3 = C.Surface2
-    box.BorderSizePixel = 0
-    box.ClearTextOnFocus = false
-    box.Font = Font
-    box.TextSize = 13
-    box.TextColor3 = C.Text
-    box.TextXAlignment = Enum.TextXAlignment.Left
-    box.TextTruncate = Enum.TextTruncate.AtEnd
-    box.Text = ""
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
-    local pad = Instance.new("UIPadding", box)
-    pad.PaddingLeft = UDim.new(0, 10)
-    pad.PaddingRight = UDim.new(0, 10)
-
-    local value = default or ""
-
-    local function setValue(v, silent)
-        v = tostring(v or "")
-        if maxLen and (utf8.len(v) or #v) > maxLen then
-            v = string.sub(v, 1, (utf8.offset(v, maxLen + 1) or (#v + 1)) - 1)
-        end
-        if v == "" then v = default or "" end
-        value = v
-        box.Text = v
-        if not silent and callback then pcall(callback, v) end
-    end
-
-    box.FocusLost:Connect(function() setValue(box.Text) end)
-    setValue(value, true)
-
-    registry[name] = {
-        kind = "text",
-        set = setValue,
-        get = function() return value end,
-        row = row,
-    }
-    if default ~= nil and callback then pcall(callback, value) end
-    applyPending(name)
-    return registry[name]
-end
-
 function API:AddSelectMenu(name, labelText, options, default, callback)
     options = options or {}
-    local HEAD_H, ITEM_H, PAD = 46, 32, 6
-    local listH = #options * ITEM_H + PAD * 2
+    local ROW_H, ITEM_H, GAP, PAD, VISIBLE = 46, 26, 3, 4, 4
+    local PILL_W = 108
+    local listH = #options * ITEM_H + math.max(#options - 1, 0) * GAP + PAD * 2
+    local maxH = VISIBLE * ITEM_H + (VISIBLE - 1) * GAP + PAD * 2
 
     local row = Instance.new("Frame", currentBody())
     row.Name = name .. "_Row"
-    row.Size = UDim2.new(1, 0, 0, HEAD_H)
+    row.Size = UDim2.new(1, 0, 0, ROW_H)
     row.BackgroundColor3 = C.Surface
     row.BorderSizePixel = 0
-    row.ClipsDescendants = true
     row.LayoutOrder = nextOrder()
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
     local s = Instance.new("UIStroke", row)
@@ -711,7 +646,7 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
     s.Thickness = 1
 
     local lbl = Instance.new("TextLabel", row)
-    lbl.Size = UDim2.new(0.5, -14, 0, HEAD_H)
+    lbl.Size = UDim2.new(1, -(PILL_W + 26), 1, 0)
     lbl.Position = UDim2.fromOffset(14, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text = labelText or name
@@ -719,93 +654,163 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
     lbl.TextSize = 14
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextTruncate = Enum.TextTruncate.AtEnd
 
-    local valLbl = Instance.new("TextLabel", row)
-    valLbl.AnchorPoint = Vector2.new(1, 0)
-    valLbl.Size = UDim2.new(0.5, -36, 0, HEAD_H)
-    valLbl.Position = UDim2.new(1, -34, 0, 0)
+    local pill = Instance.new("TextButton", row)
+    pill.Size = UDim2.fromOffset(PILL_W, 28)
+    pill.AnchorPoint = Vector2.new(1, 0.5)
+    pill.Position = UDim2.new(1, -12, 0.5, 0)
+    pill.BackgroundColor3 = C.Surface2
+    pill.BorderSizePixel = 0
+    pill.AutoButtonColor = false
+    pill.Text = ""
+    Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 8)
+
+    local valLbl = Instance.new("TextLabel", pill)
+    valLbl.Size = UDim2.new(1, -26, 1, 0)
+    valLbl.Position = UDim2.fromOffset(10, 0)
     valLbl.BackgroundTransparency = 1
     valLbl.Font = FontBold
     valLbl.TextSize = 13
     valLbl.TextColor3 = C.Accent
-    valLbl.TextXAlignment = Enum.TextXAlignment.Right
+    valLbl.TextXAlignment = Enum.TextXAlignment.Left
     valLbl.TextTruncate = Enum.TextTruncate.AtEnd
 
-    local arrow = Instance.new("TextLabel", row)
-    arrow.Size = UDim2.fromOffset(16, HEAD_H)
-    arrow.Position = UDim2.new(1, -28, 0, 0)
+    local arrow = Instance.new("TextLabel", pill)
+    arrow.Size = UDim2.fromOffset(16, 28)
+    arrow.Position = UDim2.new(1, -20, 0, 0)
     arrow.BackgroundTransparency = 1
     arrow.Text = "▼"
     arrow.Font = FontBold
-    arrow.TextSize = 10
+    arrow.TextSize = 9
     arrow.TextColor3 = C.TextDim
 
-    local list = Instance.new("Frame", row)
-    list.Position = UDim2.fromOffset(0, HEAD_H)
-    list.Size = UDim2.new(1, 0, 0, listH)
-    list.BackgroundTransparency = 1
-    list.BorderSizePixel = 0
-
-    local head = Instance.new("TextButton", row)
-    head.Size = UDim2.new(1, 0, 0, HEAD_H)
-    head.BackgroundTransparency = 1
-    head.Text = ""
-    head.ZIndex = 3
+    local valid = {}
+    for _, opt in ipairs(options) do valid[opt] = true end
 
     local selected = nil
-    local optionButtons = {}
-
-    local function refresh()
-        for opt, b in pairs(optionButtons) do
-            local sel = (opt == selected)
-            b.BackgroundColor3 = sel and C.Accent or C.Surface2
-            b.TextColor3 = sel and C.Bg or C.Text
-        end
-    end
 
     local function setSelected(v, silent)
-        if optionButtons[v] == nil then return end
+        if not valid[v] then return end
         selected = v
         valLbl.Text = tostring(v)
-        refresh()
         if not silent and callback then pcall(callback, v) end
     end
 
-    local open = false
-    local function setOpen(o)
-        open = o
-        TweenService:Create(row, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {
-            Size = UDim2.new(1, 0, 0, o and (HEAD_H + listH) or HEAD_H)
-        }):Play()
-        TweenService:Create(arrow, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {
-            Rotation = o and 180 or 0
-        }):Play()
+    local isOpen, popup, blocker = false, nil, nil
+
+    local function closeSelect()
+        if not isOpen then return end
+        isOpen = false
+        if activeSelectClose == closeSelect then activeSelectClose = nil end
+        local pg, bl = popup, blocker
+        popup, blocker = nil, nil
+        if bl then bl:Destroy() end
+        if pg then
+            TweenService:Create(pg, TweenInfo.new(0.12, Enum.EasingStyle.Quart), {
+                Size = UDim2.fromOffset(pg.Size.X.Offset, 0)
+            }):Play()
+            task.delay(0.14, function() pg:Destroy() end)
+        end
+        TweenService:Create(arrow, TweenInfo.new(0.15), {Rotation = 0}):Play()
     end
 
-    for i, opt in ipairs(options) do
-        local b = Instance.new("TextButton", list)
-        b.Name = "Opt_" .. tostring(opt)
-        b.Size = UDim2.new(1, -20, 0, ITEM_H - 4)
-        b.Position = UDim2.fromOffset(10, PAD + (i - 1) * ITEM_H)
-        b.BackgroundColor3 = C.Surface2
-        b.BorderSizePixel = 0
-        b.AutoButtonColor = false
-        b.Text = tostring(opt)
-        b.Font = Font
-        b.TextSize = 13
-        b.TextColor3 = C.Text
-        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-        optionButtons[opt] = b
-        b.MouseButton1Click:Connect(function()
-            setSelected(opt)
-            setOpen(false)
-        end)
+    local function openSelect()
+        if #options == 0 then return end
+        if activeSelectClose then activeSelectClose() end
+        isOpen = true
+        activeSelectClose = closeSelect
+
+        local width = math.max(pill.AbsoluteSize.X, 130)
+        local height = math.min(listH, maxH)
+        local cam = workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+        local px = pill.AbsolutePosition.X + pill.AbsoluteSize.X - width
+        px = math.clamp(px, 4, math.max(vp.X - width - 4, 4))
+        local py = pill.AbsolutePosition.Y + pill.AbsoluteSize.Y + 4
+        if py + height > vp.Y - 4 then
+            py = pill.AbsolutePosition.Y - height - 4
+        end
+        py = math.max(py, 4)
+
+        blocker = Instance.new("TextButton", screenGui)
+        blocker.Name = "SelectBlocker"
+        blocker.Size = UDim2.fromScale(1, 1)
+        blocker.BackgroundTransparency = 1
+        blocker.AutoButtonColor = false
+        blocker.Text = ""
+        blocker.ZIndex = 49
+        blocker.MouseButton1Click:Connect(closeSelect)
+
+        popup = Instance.new("Frame", screenGui)
+        popup.Name = "SelectPopup"
+        popup.ZIndex = 50
+        popup.Position = UDim2.fromOffset(px, py)
+        popup.Size = UDim2.fromOffset(width, 0)
+        popup.BackgroundColor3 = C.Surface
+        popup.BorderSizePixel = 0
+        popup.ClipsDescendants = true
+        Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 10)
+        local ps = Instance.new("UIStroke", popup)
+        ps.Color = C.Accent
+        ps.Thickness = 1.25
+
+        local scroll = Instance.new("ScrollingFrame", popup)
+        scroll.Size = UDim2.fromScale(1, 1)
+        scroll.BackgroundTransparency = 1
+        scroll.BorderSizePixel = 0
+        scroll.ScrollBarThickness = 3
+        scroll.ScrollBarImageColor3 = C.Accent
+        scroll.CanvasSize = UDim2.fromOffset(0, listH)
+        scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+        scroll.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+
+        local layout = Instance.new("UIListLayout", scroll)
+        layout.Padding = UDim.new(0, GAP)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        local pad = Instance.new("UIPadding", scroll)
+        pad.PaddingTop = UDim.new(0, PAD)
+        pad.PaddingBottom = UDim.new(0, PAD)
+        pad.PaddingLeft = UDim.new(0, PAD)
+        pad.PaddingRight = UDim.new(0, PAD + 2)
+
+        local selectedIndex = 1
+        for i, opt in ipairs(options) do
+            local sel = (opt == selected)
+            if sel then selectedIndex = i end
+            local b = Instance.new("TextButton", scroll)
+            b.Name = "Opt_" .. tostring(opt)
+            b.LayoutOrder = i
+            b.Size = UDim2.new(1, 0, 0, ITEM_H)
+            b.BackgroundColor3 = sel and C.Accent or C.Surface2
+            b.BorderSizePixel = 0
+            b.AutoButtonColor = false
+            b.Text = tostring(opt)
+            b.Font = Font
+            b.TextSize = 13
+            b.TextColor3 = sel and C.Bg or C.Text
+            Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
+            b.MouseButton1Click:Connect(function()
+                closeSelect()
+                setSelected(opt)
+            end)
+        end
+
+        local maxScroll = math.max(listH - height, 0)
+        scroll.CanvasPosition = Vector2.new(0, math.clamp((selectedIndex - 1) * (ITEM_H + GAP) - (ITEM_H + GAP), 0, maxScroll))
+
+        TweenService:Create(popup, TweenInfo.new(0.15, Enum.EasingStyle.Quart), {
+            Size = UDim2.fromOffset(width, height)
+        }):Play()
+        TweenService:Create(arrow, TweenInfo.new(0.15), {Rotation = 180}):Play()
     end
 
-    head.MouseButton1Click:Connect(function() setOpen(not open) end)
+    pill.MouseButton1Click:Connect(function()
+        if isOpen then closeSelect() else openSelect() end
+    end)
 
     local initial = options[1]
-    if default ~= nil and optionButtons[default] ~= nil then initial = default end
+    if default ~= nil and valid[default] then initial = default end
     if initial ~= nil then setSelected(initial, true) end
 
     registry[name] = {
@@ -874,7 +879,7 @@ function API:SaveConfig()
     end
     local items = {}
     for name, e in pairs(registry) do
-        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" or e.kind == "text" then
+        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" then
             items[name] = e.get()
         end
     end
@@ -1125,6 +1130,7 @@ end
 function API:Close()
     if not isOpen then return end
     isOpen = false
+    if activeSelectClose then activeSelectClose() end
     lastPos = menu.Position
     local fullSize = lastSize or UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
     closeToken = closeToken + 1
@@ -1276,42 +1282,62 @@ API.Instances = {
     Colors = C,
 }
 
+local BZ_VERSION = "v2.2"
+local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
+local logoSizeValue = 56
+local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
+
+local function refreshLogoText()
+    local len = utf8.len(logoText.Text) or #logoText.Text
+    local size = logoSizeValue * 0.39
+    if len > 2 then size = size * 2 / len end
+    logoText.TextSize = math.max(8, math.floor(size))
+end
+
+local function refreshStudio()
+    if studioShowVersion then
+        subtitle.Text = BZ_VERSION .. " · " .. studioText
+    else
+        subtitle.Text = studioText
+    end
+end
+
+function API:SetTitle(text)
+    if text == nil or tostring(text) == "" then text = TEXT_DEFAULTS.Title end
+    title.Text = tostring(text)
+end
+
+function API:SetLogoText(text)
+    if text == nil or tostring(text) == "" then text = TEXT_DEFAULTS.Logo end
+    logoText.Text = tostring(text)
+    refreshLogoText()
+end
+
+function API:SetStudio(text, showVersion)
+    if text == nil or tostring(text) == "" then text = TEXT_DEFAULTS.Studio end
+    studioText = tostring(text)
+    if showVersion ~= nil then studioShowVersion = showVersion and true or false end
+    refreshStudio()
+end
+
+function API:SetTexts(t)
+    t = t or {}
+    if t.Title ~= nil then API:SetTitle(t.Title) end
+    if t.Logo ~= nil then API:SetLogoText(t.Logo) end
+    if t.Studio ~= nil then API:SetStudio(t.Studio, t.ShowVersion) end
+end
+
+function API:ResetTexts()
+    studioShowVersion = true
+    API:SetTitle(nil)
+    API:SetLogoText(nil)
+    API:SetStudio(nil)
+end
+
 local function buildUICategory()
     local prev = currentCat
     createCategory("ui", "UI", true, { order = 9998, noSelect = true })
     currentCat = "ui"
-
-    local BZ_VERSION = "v2.1"
-    local logoSizeValue = 56
-    local function refreshLogoText()
-        local len = utf8.len(logoText.Text) or #logoText.Text
-        local size = logoSizeValue * 0.39
-        if len > 2 then size = size * 2 / len end
-        logoText.TextSize = math.max(8, math.floor(size))
-    end
-
-    API:AddSection("Teks")
-    API:AddTextInput("ui_title", "Teks Menu", "BZ Menu", function(v)
-        title.Text = v
-    end, 20)
-    API:AddTextInput("ui_logo_text", "Teks Logo", "BZ", function(v)
-        logoText.Text = v
-        refreshLogoText()
-    end, 4)
-    API:AddTextInput("ui_subtitle", "Teks Studio", "Studio The Clown", function(v)
-        subtitle.Text = BZ_VERSION .. " · " .. v
-    end, 24)
-    API:AddTapToggleOneClick("ui_reset_text", "Reset Teks ke Default", function()
-        local defaults = {
-            ui_title = "BZ Menu",
-            ui_logo_text = "BZ",
-            ui_subtitle = "Studio The Clown",
-        }
-        for n, v in pairs(defaults) do
-            local e = registry[n]
-            if e then e.set(v) end
-        end
-    end)
 
     API:AddSection("Logo")
     API:AddSlider("ui_logo_size", "Logo Size", 36, 96, 56, function(v)
@@ -1341,7 +1367,7 @@ local function buildUICategory()
             cfgStatus:SetText(ok and "✔ Config tersimpan" or ("✘ " .. tostring(err)))
         end
     end)
-    cfgStatus = API:AddNote("Save Config menyimpan semua toggle, slider, pilihan, dan teks ke folder \"BZ Menu\" sesuai Game ID (BZ_GameID_Config.json). Otomatis dimuat saat script dijalankan.")
+    cfgStatus = API:AddNote("Save Config menyimpan semua toggle, slider, dan pilihan ke folder \"BZ Menu\" sesuai Game ID (BZ_GameID_Config.json). Otomatis dimuat saat script dijalankan.")
 
     currentCat = prev
 end
@@ -1426,5 +1452,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v2.1 module ready.")
+print("[BZ] Menu UI v2.2 module ready.")
 return API
