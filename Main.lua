@@ -141,7 +141,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.new(0, 18, 1, -22)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v2.2 · Studio The Clown"
+subtitle.Text = "v2.3 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -266,6 +266,7 @@ local function applyPending(name)
     local want = (e.kind == "toggle" and "boolean")
         or (e.kind == "slider" and "number")
         or (e.kind == "select" and "string")
+        or (e.kind == "multiselect" and "table")
     if want and type(v) == want then e.set(v) end
 end
 local activeSlider = nil
@@ -824,6 +825,254 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
     return registry[name]
 end
 
+function API:AddMultiSelectMenu(name, labelText, options, defaults, callback)
+    options = options or {}
+    local ROW_H, ITEM_H, GAP, PAD, VISIBLE = 46, 26, 3, 4, 4
+    local PILL_W = 108
+    local listH = #options * ITEM_H + math.max(#options - 1, 0) * GAP + PAD * 2
+    local maxH = VISIBLE * ITEM_H + (VISIBLE - 1) * GAP + PAD * 2
+
+    local row = Instance.new("Frame", currentBody())
+    row.Name = name .. "_Row"
+    row.Size = UDim2.new(1, 0, 0, ROW_H)
+    row.BackgroundColor3 = C.Surface
+    row.BorderSizePixel = 0
+    row.LayoutOrder = nextOrder()
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    local s = Instance.new("UIStroke", row)
+    s.Color = C.Stroke
+    s.Thickness = 1
+
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(1, -(PILL_W + 26), 1, 0)
+    lbl.Position = UDim2.fromOffset(14, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText or name
+    lbl.Font = Font
+    lbl.TextSize = 14
+    lbl.TextColor3 = C.Text
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextTruncate = Enum.TextTruncate.AtEnd
+
+    local pill = Instance.new("TextButton", row)
+    pill.Size = UDim2.fromOffset(PILL_W, 28)
+    pill.AnchorPoint = Vector2.new(1, 0.5)
+    pill.Position = UDim2.new(1, -12, 0.5, 0)
+    pill.BackgroundColor3 = C.Surface2
+    pill.BorderSizePixel = 0
+    pill.AutoButtonColor = false
+    pill.Text = ""
+    Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 8)
+
+    local valLbl = Instance.new("TextLabel", pill)
+    valLbl.Size = UDim2.new(1, -26, 1, 0)
+    valLbl.Position = UDim2.fromOffset(10, 0)
+    valLbl.BackgroundTransparency = 1
+    valLbl.Font = FontBold
+    valLbl.TextSize = 13
+    valLbl.TextColor3 = C.Accent
+    valLbl.TextXAlignment = Enum.TextXAlignment.Left
+    valLbl.TextTruncate = Enum.TextTruncate.AtEnd
+
+    local arrow = Instance.new("TextLabel", pill)
+    arrow.Size = UDim2.fromOffset(16, 28)
+    arrow.Position = UDim2.new(1, -20, 0, 0)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = "▼"
+    arrow.Font = FontBold
+    arrow.TextSize = 9
+    arrow.TextColor3 = C.TextDim
+
+    local valid = {}
+    for _, opt in ipairs(options) do valid[opt] = true end
+
+    local chosen = {}
+    local buttons = {}
+
+    local function toList()
+        local list = {}
+        for _, opt in ipairs(options) do
+            if chosen[opt] then list[#list + 1] = opt end
+        end
+        return list
+    end
+
+    local function updateSummary()
+        local list = toList()
+        if #list == 0 then
+            valLbl.Text = "Pilih..."
+        elseif #list == 1 then
+            valLbl.Text = tostring(list[1])
+        else
+            valLbl.Text = #list .. " dipilih"
+        end
+    end
+
+    local function paint(opt)
+        local b = buttons[opt]
+        if not b then return end
+        local sel = chosen[opt] == true
+        b.BackgroundColor3 = sel and C.Accent or C.Surface2
+        b.TextColor3 = sel and C.Bg or C.Text
+    end
+
+    local function setSelected(list, silent)
+        if type(list) ~= "table" then return end
+        chosen = {}
+        for _, v in ipairs(list) do
+            if valid[v] then chosen[v] = true end
+        end
+        updateSummary()
+        for opt in pairs(buttons) do paint(opt) end
+        if not silent and callback then pcall(callback, toList()) end
+    end
+
+    local isOpen, popup, blocker = false, nil, nil
+
+    local function closeSelect()
+        if not isOpen then return end
+        isOpen = false
+        if activeSelectClose == closeSelect then activeSelectClose = nil end
+        buttons = {}
+        local pg, bl = popup, blocker
+        popup, blocker = nil, nil
+        if bl then bl:Destroy() end
+        if pg then
+            TweenService:Create(pg, TweenInfo.new(0.12, Enum.EasingStyle.Quart), {
+                Size = UDim2.fromOffset(pg.Size.X.Offset, 0)
+            }):Play()
+            task.delay(0.14, function() pg:Destroy() end)
+        end
+        TweenService:Create(arrow, TweenInfo.new(0.15), {Rotation = 0}):Play()
+    end
+
+    local function openSelect()
+        if #options == 0 then return end
+        if activeSelectClose then activeSelectClose() end
+        isOpen = true
+        activeSelectClose = closeSelect
+
+        local width = math.max(pill.AbsoluteSize.X, 130)
+        local height = math.min(listH, maxH)
+        local cam = workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+        local px = pill.AbsolutePosition.X + pill.AbsoluteSize.X - width
+        px = math.clamp(px, 4, math.max(vp.X - width - 4, 4))
+        local py = pill.AbsolutePosition.Y + pill.AbsoluteSize.Y + 4
+        if py + height > vp.Y - 4 then
+            py = pill.AbsolutePosition.Y - height - 4
+        end
+        py = math.max(py, 4)
+
+        blocker = Instance.new("TextButton", screenGui)
+        blocker.Name = "SelectBlocker"
+        blocker.Size = UDim2.fromScale(1, 1)
+        blocker.BackgroundTransparency = 1
+        blocker.AutoButtonColor = false
+        blocker.Text = ""
+        blocker.ZIndex = 49
+        blocker.MouseButton1Click:Connect(closeSelect)
+
+        popup = Instance.new("Frame", screenGui)
+        popup.Name = "SelectPopup"
+        popup.ZIndex = 50
+        popup.Position = UDim2.fromOffset(px, py)
+        popup.Size = UDim2.fromOffset(width, 0)
+        popup.BackgroundColor3 = C.Surface
+        popup.BorderSizePixel = 0
+        popup.ClipsDescendants = true
+        Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 10)
+        local ps = Instance.new("UIStroke", popup)
+        ps.Color = C.Accent
+        ps.Thickness = 1.25
+
+        local scroll = Instance.new("ScrollingFrame", popup)
+        scroll.Size = UDim2.fromScale(1, 1)
+        scroll.BackgroundTransparency = 1
+        scroll.BorderSizePixel = 0
+        scroll.ScrollBarThickness = 3
+        scroll.ScrollBarImageColor3 = C.Accent
+        scroll.CanvasSize = UDim2.fromOffset(0, listH)
+        scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+        scroll.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+
+        local layout = Instance.new("UIListLayout", scroll)
+        layout.Padding = UDim.new(0, GAP)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        local pad = Instance.new("UIPadding", scroll)
+        pad.PaddingTop = UDim.new(0, PAD)
+        pad.PaddingBottom = UDim.new(0, PAD)
+        pad.PaddingLeft = UDim.new(0, PAD)
+        pad.PaddingRight = UDim.new(0, PAD + 2)
+
+        local firstIndex = 1
+        local foundFirst = false
+        for i, opt in ipairs(options) do
+            if chosen[opt] and not foundFirst then
+                firstIndex = i
+                foundFirst = true
+            end
+            local b = Instance.new("TextButton", scroll)
+            b.Name = "Opt_" .. tostring(opt)
+            b.LayoutOrder = i
+            b.Size = UDim2.new(1, 0, 0, ITEM_H)
+            b.BorderSizePixel = 0
+            b.AutoButtonColor = false
+            b.Text = tostring(opt)
+            b.Font = Font
+            b.TextSize = 13
+            Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
+            buttons[opt] = b
+            paint(opt)
+            b.MouseButton1Click:Connect(function()
+                chosen[opt] = (not chosen[opt]) or nil
+                paint(opt)
+                updateSummary()
+                if callback then pcall(callback, toList()) end
+            end)
+        end
+
+        local maxScroll = math.max(listH - height, 0)
+        scroll.CanvasPosition = Vector2.new(0, math.clamp((firstIndex - 1) * (ITEM_H + GAP) - (ITEM_H + GAP), 0, maxScroll))
+
+        TweenService:Create(popup, TweenInfo.new(0.15, Enum.EasingStyle.Quart), {
+            Size = UDim2.fromOffset(width, height)
+        }):Play()
+        TweenService:Create(arrow, TweenInfo.new(0.15), {Rotation = 180}):Play()
+    end
+
+    pill.MouseButton1Click:Connect(function()
+        if isOpen then closeSelect() else openSelect() end
+    end)
+
+    if type(defaults) == "table" then
+        setSelected(defaults, true)
+    else
+        updateSummary()
+    end
+
+    registry[name] = {
+        kind = "multiselect",
+        set = setSelected,
+        get = toList,
+        row = row,
+    }
+    if type(defaults) == "table" and callback then pcall(callback, toList()) end
+    applyPending(name)
+    return registry[name]
+end
+
+function API:GetMultiSelect(name)
+    local e = registry[name]
+    if e and e.kind == "multiselect" then return e.get() end
+    return nil
+end
+
+function API:SetMultiSelect(name, list, silent)
+    local e = registry[name]
+    if e and e.kind == "multiselect" then e.set(list, silent) end
+end
+
 function API:GetSelect(name)
     local e = registry[name]
     if e and e.kind == "select" then return e.get() end
@@ -879,7 +1128,7 @@ function API:SaveConfig()
     end
     local items = {}
     for name, e in pairs(registry) do
-        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" then
+        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" or e.kind == "multiselect" then
             items[name] = e.get()
         end
     end
@@ -1296,7 +1545,7 @@ API.Instances = {
     Colors = C,
 }
 
-local BZ_VERSION = "v2.2"
+local BZ_VERSION = "v2.3"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -1466,5 +1715,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v2.2 module ready.")
+print("[BZ] Menu UI v2.3 module ready.")
 return API
