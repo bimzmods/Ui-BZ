@@ -36,7 +36,8 @@ local CFG = {
     LogoGap   = 12,
     ScreenPad = 10,
     LogoStart = UDim2.new(0, 40, 0.5, -28),
-    ConfigFile = "BZ_Menu_Config.json",
+    ConfigDir = "BZ Menu",
+    ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json",
 }
 local C = CFG.Colors
 local Font, FontBold = CFG.Font, CFG.FontBold
@@ -140,7 +141,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.new(0, 18, 1, -22)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v2.0 · Studio The Clown"
+subtitle.Text = "v2.1 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -265,6 +266,7 @@ local function applyPending(name)
     local want = (e.kind == "toggle" and "boolean")
         or (e.kind == "slider" and "number")
         or (e.kind == "select" and "string")
+        or (e.kind == "text" and "string")
     if want and type(v) == want then e.set(v) end
 end
 local activeSlider = nil
@@ -625,6 +627,72 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     return registry[name]
 end
 
+function API:AddTextInput(name, labelText, default, callback, maxLen)
+    local row = Instance.new("Frame", currentBody())
+    row.Name = name .. "_Row"
+    row.Size = UDim2.new(1, 0, 0, 66)
+    row.BackgroundColor3 = C.Surface
+    row.BorderSizePixel = 0
+    row.LayoutOrder = nextOrder()
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    local s = Instance.new("UIStroke", row)
+    s.Color = C.Stroke
+    s.Thickness = 1
+
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(1, -28, 0, 24)
+    lbl.Position = UDim2.fromOffset(14, 6)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText or name
+    lbl.Font = Font
+    lbl.TextSize = 14
+    lbl.TextColor3 = C.Text
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local box = Instance.new("TextBox", row)
+    box.Size = UDim2.new(1, -28, 0, 28)
+    box.Position = UDim2.fromOffset(14, 32)
+    box.BackgroundColor3 = C.Surface2
+    box.BorderSizePixel = 0
+    box.ClearTextOnFocus = false
+    box.Font = Font
+    box.TextSize = 13
+    box.TextColor3 = C.Text
+    box.TextXAlignment = Enum.TextXAlignment.Left
+    box.TextTruncate = Enum.TextTruncate.AtEnd
+    box.Text = ""
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
+    local pad = Instance.new("UIPadding", box)
+    pad.PaddingLeft = UDim.new(0, 10)
+    pad.PaddingRight = UDim.new(0, 10)
+
+    local value = default or ""
+
+    local function setValue(v, silent)
+        v = tostring(v or "")
+        if maxLen and (utf8.len(v) or #v) > maxLen then
+            v = string.sub(v, 1, (utf8.offset(v, maxLen + 1) or (#v + 1)) - 1)
+        end
+        if v == "" then v = default or "" end
+        value = v
+        box.Text = v
+        if not silent and callback then pcall(callback, v) end
+    end
+
+    box.FocusLost:Connect(function() setValue(box.Text) end)
+    setValue(value, true)
+
+    registry[name] = {
+        kind = "text",
+        set = setValue,
+        get = function() return value end,
+        row = row,
+    }
+    if default ~= nil and callback then pcall(callback, value) end
+    applyPending(name)
+    return registry[name]
+end
+
 function API:AddSelectMenu(name, labelText, options, default, callback)
     options = options or {}
     local HEAD_H, ITEM_H, PAD = 46, 32, 6
@@ -806,7 +874,7 @@ function API:SaveConfig()
     end
     local items = {}
     for name, e in pairs(registry) do
-        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" then
+        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" or e.kind == "text" then
             items[name] = e.get()
         end
     end
@@ -814,6 +882,11 @@ function API:SaveConfig()
         return HttpService:JSONEncode({ version = 1, items = items })
     end)
     if not okj then return false, "gagal membuat JSON config" end
+
+    if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
+        local okd, exists = pcall(isfolder, CFG.ConfigDir)
+        if okd and not exists then pcall(makefolder, CFG.ConfigDir) end
+    end
     local okw, err = pcall(writefile, CFG.ConfigFile, json)
     if not okw then return false, tostring(err) end
     return true
@@ -1208,10 +1281,43 @@ local function buildUICategory()
     createCategory("ui", "UI", true, { order = 9998, noSelect = true })
     currentCat = "ui"
 
+    local BZ_VERSION = "v2.1"
+    local logoSizeValue = 56
+    local function refreshLogoText()
+        local len = utf8.len(logoText.Text) or #logoText.Text
+        local size = logoSizeValue * 0.39
+        if len > 2 then size = size * 2 / len end
+        logoText.TextSize = math.max(8, math.floor(size))
+    end
+
+    API:AddSection("Teks")
+    API:AddTextInput("ui_title", "Teks Menu", "BZ Menu", function(v)
+        title.Text = v
+    end, 20)
+    API:AddTextInput("ui_logo_text", "Teks Logo", "BZ", function(v)
+        logoText.Text = v
+        refreshLogoText()
+    end, 4)
+    API:AddTextInput("ui_subtitle", "Teks Studio", "Studio The Clown", function(v)
+        subtitle.Text = BZ_VERSION .. " · " .. v
+    end, 24)
+    API:AddTapToggleOneClick("ui_reset_text", "Reset Teks ke Default", function()
+        local defaults = {
+            ui_title = "BZ Menu",
+            ui_logo_text = "BZ",
+            ui_subtitle = "Studio The Clown",
+        }
+        for n, v in pairs(defaults) do
+            local e = registry[n]
+            if e then e.set(v) end
+        end
+    end)
+
     API:AddSection("Logo")
     API:AddSlider("ui_logo_size", "Logo Size", 36, 96, 56, function(v)
         logo.Size = UDim2.fromOffset(v, v)
-        logoText.TextSize = math.floor(v * 0.39)
+        logoSizeValue = v
+        refreshLogoText()
         local corner = logo:FindFirstChildOfClass("UICorner")
         if corner then corner.CornerRadius = UDim.new(0, math.floor(v * 0.25)) end
     end, 1)
@@ -1235,7 +1341,7 @@ local function buildUICategory()
             cfgStatus:SetText(ok and "✔ Config tersimpan" or ("✘ " .. tostring(err)))
         end
     end)
-    cfgStatus = API:AddNote("Save Config menyimpan semua toggle, slider, dan pilihan. Otomatis dimuat saat script dijalankan.")
+    cfgStatus = API:AddNote("Save Config menyimpan semua toggle, slider, pilihan, dan teks ke folder \"BZ Menu\" sesuai Game ID (BZ_GameID_Config.json). Otomatis dimuat saat script dijalankan.")
 
     currentCat = prev
 end
@@ -1320,5 +1426,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v2.0 module ready.")
+print("[BZ] Menu UI v2.1 module ready.")
 return API
