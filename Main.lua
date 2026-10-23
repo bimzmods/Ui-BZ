@@ -37,6 +37,7 @@ local CFG = {
     ScreenPad = 10,
     LogoStart = UDim2.new(0, 40, 0.5, -28),
     ConfigDir = "BZ Menu",
+    CacheDir = "BZ Menu/cache",
     ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json",
 }
 local C = CFG.Colors
@@ -95,6 +96,16 @@ logoText.Font = FontBold
 logoText.TextSize = 22
 logoText.TextColor3 = C.Accent
 
+local logoImage = Instance.new("ImageLabel", logo)
+logoImage.Name = "LogoImage"
+logoImage.Size = UDim2.fromScale(1, 1)
+logoImage.BackgroundTransparency = 1
+logoImage.BorderSizePixel = 0
+logoImage.ScaleType = Enum.ScaleType.Crop
+logoImage.Image = ""
+logoImage.Visible = false
+Instance.new("UICorner", logoImage).CornerRadius = UDim.new(0.25, 0)
+
 local menu = Instance.new("Frame", screenGui)
 menu.Name = "Menu"
 menu.Size = UDim2.fromOffset(CFG.MenuWDef, CFG.MenuHDef)
@@ -141,7 +152,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.new(0, 18, 1, -22)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v2.3 · Studio The Clown"
+subtitle.Text = "v2.6 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -286,6 +297,155 @@ local categoryOrder = 0
 local currentCat = nil
 local selectedCat = nil
 
+local ICONS = {
+    ["eye"] = "\u{1F441}\u{FE0F}",
+    ["eye-slash"] = "\u{1F648}",
+    ["user"] = "\u{1F464}",
+    ["users"] = "\u{1F465}",
+    ["cog"] = "\u{2699}\u{FE0F}",
+    ["home"] = "\u{1F3E0}",
+    ["bolt"] = "\u{26A1}",
+    ["fire"] = "\u{1F525}",
+    ["star"] = "\u{2B50}",
+    ["heart"] = "\u{2764}\u{FE0F}",
+    ["shield"] = "\u{1F6E1}\u{FE0F}",
+    ["crosshairs"] = "\u{1F3AF}",
+    ["map"] = "\u{1F5FA}\u{FE0F}",
+    ["location"] = "\u{1F4CD}",
+    ["car"] = "\u{1F697}",
+    ["plane"] = "\u{2708}\u{FE0F}",
+    ["gamepad"] = "\u{1F3AE}",
+    ["palette"] = "\u{1F3A8}",
+    ["wrench"] = "\u{1F527}",
+    ["lock"] = "\u{1F512}",
+    ["unlock"] = "\u{1F513}",
+    ["key"] = "\u{1F511}",
+    ["bell"] = "\u{1F514}",
+    ["bug"] = "\u{1F41B}",
+    ["code"] = "\u{1F4BB}",
+    ["skull"] = "\u{1F480}",
+    ["ghost"] = "\u{1F47B}",
+    ["sword"] = "\u{2694}\u{FE0F}",
+    ["bomb"] = "\u{1F4A3}",
+    ["coins"] = "\u{1F4B0}",
+    ["gift"] = "\u{1F381}",
+    ["search"] = "\u{1F50D}",
+    ["info"] = "\u{2139}\u{FE0F}",
+    ["warning"] = "\u{26A0}\u{FE0F}",
+    ["check"] = "\u{2705}",
+    ["times"] = "\u{274C}",
+    ["list"] = "\u{1F4CB}",
+    ["folder"] = "\u{1F4C1}",
+    ["save"] = "\u{1F4BE}",
+    ["camera"] = "\u{1F4F7}",
+    ["music"] = "\u{1F3B5}",
+    ["flag"] = "\u{1F6A9}",
+    ["globe"] = "\u{1F310}",
+    ["rocket"] = "\u{1F680}",
+    ["magic"] = "\u{2728}",
+    ["running"] = "\u{1F3C3}",
+    ["crown"] = "\u{1F451}",
+    ["dice"] = "\u{1F3B2}",
+    ["clock"] = "\u{1F552}",
+    ["sun"] = "\u{2600}\u{FE0F}",
+    ["moon"] = "\u{1F319}"
+}
+local ICON_ALIASES = {
+    ["gear"] = "cog",
+    ["settings"] = "cog",
+    ["cogs"] = "cog",
+    ["house"] = "home",
+    ["lightning"] = "bolt",
+    ["flash"] = "bolt",
+    ["user-group"] = "users",
+    ["people"] = "users",
+    ["crosshair"] = "crosshairs",
+    ["target"] = "crosshairs",
+    ["aim"] = "crosshairs",
+    ["map-marker"] = "location",
+    ["map-pin"] = "location",
+    ["location-dot"] = "location",
+    ["pin"] = "location",
+    ["marker"] = "location",
+    ["teleport"] = "location",
+    ["tools"] = "wrench",
+    ["screwdriver-wrench"] = "wrench",
+    ["controller"] = "gamepad",
+    ["wand"] = "magic",
+    ["wand-magic-sparkles"] = "magic",
+    ["sparkles"] = "magic",
+    ["run"] = "running",
+    ["walk"] = "running",
+    ["person-running"] = "running",
+    ["dollar"] = "coins",
+    ["money"] = "coins",
+    ["coin"] = "coins",
+    ["close"] = "times",
+    ["xmark"] = "times",
+    ["x"] = "times",
+    ["circle-info"] = "info",
+    ["triangle-exclamation"] = "warning",
+    ["circle-check"] = "check",
+    ["magnifying-glass"] = "search",
+    ["floppy-disk"] = "save",
+    ["earth"] = "globe",
+    ["earth-americas"] = "globe",
+    ["paint-brush"] = "palette",
+    ["paintbrush"] = "palette",
+    ["face-ghost"] = "ghost",
+    ["eye-low-vision"] = "eye-slash",
+    ["hide"] = "eye-slash",
+    ["sword-crossed"] = "sword",
+    ["swords"] = "sword",
+    ["dagger"] = "sword",
+    ["terminal"] = "code",
+    ["laptop-code"] = "code"
+}
+
+local function resolveIcon(icon)
+    if icon == nil or icon == "" then return nil end
+    if type(icon) == "number" then
+        return "image", "rbxassetid://" .. tostring(icon)
+    end
+    local str = tostring(icon)
+    if str:match("^%d+$") then
+        return "image", "rbxassetid://" .. str
+    end
+    if str:match("^rbxassetid://") or str:match("^rbxasset://") then
+        return "image", str
+    end
+    local key = str:lower():match("([%w%-_]+)%s*$") or ""
+    key = key:gsub("_", "-")
+    key = key:gsub("^fa%-", "")
+    key = ICON_ALIASES[key] or key
+    if ICONS[key] then return "text", ICONS[key] end
+    return "text", str
+end
+
+local function makeTabIcon(parent, icon)
+    local kind, value = resolveIcon(icon)
+    if not kind then return nil end
+    local obj
+    if kind == "image" then
+        obj = Instance.new("ImageLabel", parent)
+        obj.Size = UDim2.fromOffset(14, 14)
+        obj.BackgroundTransparency = 1
+        obj.Image = value
+        obj.ImageColor3 = C.TextDim
+    else
+        obj = Instance.new("TextLabel", parent)
+        obj.Size = UDim2.new(0, 18, 1, 0)
+        obj.BackgroundTransparency = 1
+        obj.Text = value
+        obj.Font = FontBold
+        obj.TextSize = 14
+        obj.TextColor3 = C.TextDim
+    end
+    obj.Name = "Icon"
+    obj.LayoutOrder = 1
+    return obj
+end
+
 local function relayout()
     local top = CFG.HeaderH + (tabBar.Visible and TAB_H or 0)
     for _, cat in pairs(categories) do
@@ -305,10 +465,14 @@ function API:SelectCategory(name)
 
     for n, cat in pairs(categories) do
         local on = (n == name)
-        TweenService:Create(cat.button, TweenInfo.new(0.15), {
-            BackgroundColor3 = on and C.Accent or C.Surface2,
-            TextColor3 = on and C.Bg or C.TextDim,
-        }):Play()
+        local info = TweenInfo.new(0.15)
+        local fg = on and C.Bg or C.TextDim
+        TweenService:Create(cat.button, info, {BackgroundColor3 = on and C.Accent or C.Surface2}):Play()
+        TweenService:Create(cat.label, info, {TextColor3 = fg}):Play()
+        if cat.icon then
+            local prop = cat.icon:IsA("ImageLabel") and "ImageColor3" or "TextColor3"
+            TweenService:Create(cat.icon, info, {[prop] = fg}):Play()
+        end
     end
 
     local y = target.body.Position.Y.Offset
@@ -360,17 +524,35 @@ local function createCategory(name, labelText, explicit, opts)
     btn.Size = UDim2.fromOffset(0, 28)
     btn.BackgroundColor3 = C.Surface2
     btn.AutoButtonColor = false
-    btn.Text = labelText or name
-    btn.Font = FontBold
-    btn.TextSize = 12
-    btn.TextColor3 = C.TextDim
+    btn.Text = ""
     btn.LayoutOrder = (opts and opts.order) or categoryOrder
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
     local p = Instance.new("UIPadding", btn)
-    p.PaddingLeft = UDim.new(0, 14)
-    p.PaddingRight = UDim.new(0, 14)
+    p.PaddingLeft = UDim.new(0, 12)
+    p.PaddingRight = UDim.new(0, 12)
+    local tabLay = Instance.new("UIListLayout", btn)
+    tabLay.FillDirection = Enum.FillDirection.Horizontal
+    tabLay.Padding = UDim.new(0, 5)
+    tabLay.SortOrder = Enum.SortOrder.LayoutOrder
+    tabLay.VerticalAlignment = Enum.VerticalAlignment.Center
+    tabLay.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
     local cat = { body = makeBody(), button = btn }
+    cat.icon = makeTabIcon(btn, opts and opts.icon)
+
+    local text = (labelText == nil) and name or labelText
+    local labelObj = Instance.new("TextLabel", btn)
+    labelObj.Name = "Label"
+    labelObj.LayoutOrder = 2
+    labelObj.AutomaticSize = Enum.AutomaticSize.X
+    labelObj.Size = UDim2.new(0, 0, 1, 0)
+    labelObj.BackgroundTransparency = 1
+    labelObj.Text = text
+    labelObj.Font = FontBold
+    labelObj.TextSize = 12
+    labelObj.TextColor3 = C.TextDim
+    labelObj.Visible = (text ~= "")
+    cat.label = labelObj
     categories[name] = cat
     btn.MouseButton1Click:Connect(function() API:SelectCategory(name) end)
 
@@ -380,10 +562,25 @@ local function createCategory(name, labelText, explicit, opts)
     return cat
 end
 
-function API:AddCategory(name, labelText)
-    createCategory(name, labelText, true)
+function API:AddCategory(name, labelText, icon)
+    createCategory(name, labelText, true, { icon = icon })
     currentCat = name
     return categories[name]
+end
+
+function API:SetCategoryIcon(name, icon)
+    local cat = categories[name]
+    if not cat then return end
+    if cat.icon then
+        cat.icon:Destroy()
+        cat.icon = nil
+    end
+    cat.icon = makeTabIcon(cat.button, icon)
+    if cat.icon then
+        local fg = (selectedCat == name) and C.Bg or C.TextDim
+        local prop = cat.icon:IsA("ImageLabel") and "ImageColor3" or "TextColor3"
+        cat.icon[prop] = fg
+    end
 end
 
 function API:UseCategory(name)
@@ -392,7 +589,7 @@ end
 
 local function currentBody()
     if not currentCat then
-        createCategory("main", "Main", false)
+        createCategory("main", "Main", false, { icon = "home" })
         currentCat = "main"
     end
     return categories[currentCat].body
@@ -411,7 +608,25 @@ function API:AddSection(text)
     return lbl
 end
 
-function API:AddToggle(name, labelText, default, callback)
+local TOGGLE_ALIASES = {
+    switch = "switch", toggle = "switch",
+    checkbox = "checkbox", check = "checkbox", box = "checkbox",
+    radio = "radio", dot = "radio",
+    pill = "pill", onoff = "pill",
+    button = "button", fill = "button",
+}
+local defaultToggleStyle = "switch"
+
+local function normalizeToggleStyle(style)
+    return TOGGLE_ALIASES[string.lower(tostring(style or ""))]
+end
+
+function API:SetDefaultToggleStyle(style)
+    local st = normalizeToggleStyle(style)
+    if st then defaultToggleStyle = st end
+end
+
+function API:AddToggle(name, labelText, default, callback, style)
     local row = Instance.new("Frame", currentBody())
     row.Name = name .. "_Row"
     row.Size = UDim2.new(1, 0, 0, 46)
@@ -419,9 +634,9 @@ function API:AddToggle(name, labelText, default, callback)
     row.BorderSizePixel = 0
     row.LayoutOrder = nextOrder()
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
-    local s = Instance.new("UIStroke", row)
-    s.Color = C.Stroke
-    s.Thickness = 1
+    local rowStroke = Instance.new("UIStroke", row)
+    rowStroke.Color = C.Stroke
+    rowStroke.Thickness = 1
 
     local lbl = Instance.new("TextLabel", row)
     lbl.Size = UDim2.new(1, -80, 1, 0)
@@ -433,44 +648,149 @@ function API:AddToggle(name, labelText, default, callback)
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local track = Instance.new("Frame", row)
-    track.Size = UDim2.fromOffset(46, 24)
-    track.Position = UDim2.new(1, -60, 0.5, -12)
-    track.BackgroundColor3 = C.Off
-    track.BorderSizePixel = 0
-    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
-
-    local knob = Instance.new("Frame", track)
-    knob.Size = UDim2.fromOffset(18, 18)
-    knob.Position = UDim2.fromOffset(3, 3)
-    knob.BackgroundColor3 = C.Text
-    knob.BorderSizePixel = 0
-    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+    local box = Instance.new("Frame", row)
+    box.Name = "Indicator"
+    box.AnchorPoint = Vector2.new(1, 0.5)
+    box.Position = UDim2.new(1, -14, 0.5, 0)
+    box.Size = UDim2.fromOffset(54, 28)
+    box.BackgroundTransparency = 1
 
     local clickArea = Instance.new("TextButton", row)
     clickArea.Size = UDim2.fromScale(1, 1)
     clickArea.BackgroundTransparency = 1
     clickArea.Text = ""
 
-    local state = default and true or false
+    local function put(inst, props, animate)
+        if animate then
+            TweenService:Create(inst, TweenInfo.new(0.18, Enum.EasingStyle.Quart), props):Play()
+        else
+            for k, v in pairs(props) do inst[k] = v end
+        end
+    end
 
-    local function applyVisual()
-        track.BackgroundColor3 = state and C.On or C.Off
-        knob.Position = state and UDim2.fromOffset(25, 3) or UDim2.fromOffset(3, 3)
+    local builders = {}
+
+    builders.switch = function()
+        local track = Instance.new("Frame", box)
+        track.AnchorPoint = Vector2.new(1, 0.5)
+        track.Position = UDim2.new(1, 0, 0.5, 0)
+        track.Size = UDim2.fromOffset(46, 24)
+        track.BackgroundColor3 = C.Off
+        track.BorderSizePixel = 0
+        Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+        local knob = Instance.new("Frame", track)
+        knob.Size = UDim2.fromOffset(18, 18)
+        knob.Position = UDim2.fromOffset(3, 3)
+        knob.BackgroundColor3 = C.Text
+        knob.BorderSizePixel = 0
+        Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+        return function(on, animate)
+            put(track, {BackgroundColor3 = on and C.On or C.Off}, animate)
+            put(knob, {Position = on and UDim2.fromOffset(25, 3) or UDim2.fromOffset(3, 3)}, animate)
+        end
+    end
+
+    builders.checkbox = function()
+        local cb = Instance.new("Frame", box)
+        cb.AnchorPoint = Vector2.new(1, 0.5)
+        cb.Position = UDim2.new(1, 0, 0.5, 0)
+        cb.Size = UDim2.fromOffset(24, 24)
+        cb.BackgroundColor3 = C.Surface2
+        cb.BorderSizePixel = 0
+        Instance.new("UICorner", cb).CornerRadius = UDim.new(0, 6)
+        local st = Instance.new("UIStroke", cb)
+        st.Color = C.Stroke
+        st.Thickness = 1.5
+        local mark = Instance.new("TextLabel", cb)
+        mark.Size = UDim2.fromScale(1, 1)
+        mark.BackgroundTransparency = 1
+        mark.Text = "✓"
+        mark.Font = FontBold
+        mark.TextSize = 16
+        mark.TextColor3 = C.Bg
+        mark.TextTransparency = 1
+        return function(on, animate)
+            put(cb, {BackgroundColor3 = on and C.On or C.Surface2}, animate)
+            put(st, {Color = on and C.On or C.Stroke}, animate)
+            put(mark, {TextTransparency = on and 0 or 1}, animate)
+        end
+    end
+
+    builders.radio = function()
+        local ring = Instance.new("Frame", box)
+        ring.AnchorPoint = Vector2.new(1, 0.5)
+        ring.Position = UDim2.new(1, 0, 0.5, 0)
+        ring.Size = UDim2.fromOffset(22, 22)
+        ring.BackgroundColor3 = C.Surface2
+        ring.BorderSizePixel = 0
+        Instance.new("UICorner", ring).CornerRadius = UDim.new(1, 0)
+        local st = Instance.new("UIStroke", ring)
+        st.Color = C.Stroke
+        st.Thickness = 1.5
+        local dot = Instance.new("Frame", ring)
+        dot.AnchorPoint = Vector2.new(0.5, 0.5)
+        dot.Position = UDim2.fromScale(0.5, 0.5)
+        dot.Size = UDim2.fromOffset(0, 0)
+        dot.BackgroundColor3 = C.On
+        dot.BorderSizePixel = 0
+        Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+        return function(on, animate)
+            put(st, {Color = on and C.On or C.Stroke}, animate)
+            put(dot, {Size = on and UDim2.fromOffset(10, 10) or UDim2.fromOffset(0, 0)}, animate)
+        end
+    end
+
+    builders.pill = function()
+        local pill = Instance.new("Frame", box)
+        pill.AnchorPoint = Vector2.new(1, 0.5)
+        pill.Position = UDim2.new(1, 0, 0.5, 0)
+        pill.Size = UDim2.fromOffset(54, 24)
+        pill.BackgroundColor3 = C.Off
+        pill.BorderSizePixel = 0
+        Instance.new("UICorner", pill).CornerRadius = UDim.new(1, 0)
+        local txt = Instance.new("TextLabel", pill)
+        txt.Size = UDim2.fromScale(1, 1)
+        txt.BackgroundTransparency = 1
+        txt.Text = "OFF"
+        txt.Font = FontBold
+        txt.TextSize = 11
+        txt.TextColor3 = C.TextDim
+        return function(on, animate)
+            txt.Text = on and "ON" or "OFF"
+            put(pill, {BackgroundColor3 = on and C.On or C.Off}, animate)
+            put(txt, {TextColor3 = on and C.Bg or C.TextDim}, animate)
+        end
+    end
+
+    builders.button = function()
+        return function(on, animate)
+            put(row, {BackgroundColor3 = on and C.Accent or C.Surface}, animate)
+            put(lbl, {TextColor3 = on and C.Bg or C.Text}, animate)
+            put(rowStroke, {Color = on and C.Accent or C.Stroke}, animate)
+        end
+    end
+
+    local state = default and true or false
+    local update = nil
+
+    local function setStyle(newStyle)
+        local st = normalizeToggleStyle(newStyle) or defaultToggleStyle
+        box:ClearAllChildren()
+        row.BackgroundColor3 = C.Surface
+        lbl.TextColor3 = C.Text
+        rowStroke.Color = C.Stroke
+        lbl.Size = (st == "button") and UDim2.new(1, -28, 1, 0) or UDim2.new(1, -80, 1, 0)
+        update = builders[st]()
+        update(state, false)
     end
 
     local function setState(v, silent)
         state = v and true or false
-        TweenService:Create(track, TweenInfo.new(0.18, Enum.EasingStyle.Quart), {
-            BackgroundColor3 = state and C.On or C.Off
-        }):Play()
-        TweenService:Create(knob, TweenInfo.new(0.18, Enum.EasingStyle.Quart), {
-            Position = state and UDim2.fromOffset(25, 3) or UDim2.fromOffset(3, 3)
-        }):Play()
+        update(state, true)
         if not silent and callback then pcall(callback, state) end
     end
 
-    applyVisual()
+    setStyle(style)
     clickArea.MouseButton1Click:Connect(function() setState(not state) end)
 
     registry[name] = {
@@ -478,10 +798,16 @@ function API:AddToggle(name, labelText, default, callback)
         set = setState,
         get = function() return state end,
         row = row,
+        setStyle = setStyle,
     }
     if default and callback then pcall(callback, true) end
     applyPending(name)
     return registry[name]
+end
+
+function API:SetToggleStyle(name, style)
+    local e = registry[name]
+    if e and e.kind == "toggle" and e.setStyle then e.setStyle(style) end
 end
 
 function API:AddNote(text, name)
@@ -1108,6 +1434,9 @@ function API:SetTheme(themeName)
         if inst:IsA("ScrollingFrame") then
             inst.ScrollBarImageColor3 = map(inst.ScrollBarImageColor3)
         end
+        if inst:IsA("ImageLabel") then
+            inst.ImageColor3 = map(inst.ImageColor3)
+        end
         if inst:IsA("UIStroke") then
             inst.Color = map(inst.Color)
         end
@@ -1545,7 +1874,146 @@ API.Instances = {
     Colors = C,
 }
 
-local BZ_VERSION = "v2.3"
+local imageToken = 0
+local MAX_IMAGE_BYTES = 8 * 1024 * 1024
+
+local function hashString(str)
+    local h = 5381
+    for i = 1, #str do
+        h = (h * 33 + string.byte(str, i)) % 4294967296
+    end
+    return string.format("%08x", h)
+end
+
+local function ensureFolder(path)
+    if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
+        local ok, exists = pcall(isfolder, path)
+        if ok and not exists then pcall(makefolder, path) end
+    end
+end
+
+local function downloadBody(url)
+    local ok, res = pcall(function() return game:HttpGet(url) end)
+    if ok and type(res) == "string" and #res > 0 then return res end
+
+    local req = nil
+    if typeof(request) == "function" then
+        req = request
+    elseif typeof(http_request) == "function" then
+        req = http_request
+    elseif typeof(syn) == "table" and typeof(syn.request) == "function" then
+        req = syn.request
+    end
+    if req then
+        local ok2, r = pcall(req, { Url = url, Method = "GET" })
+        if ok2 and type(r) == "table" and type(r.Body) == "string" and #r.Body > 0
+            and (r.StatusCode == nil or r.StatusCode == 200) then
+            return r.Body
+        end
+    end
+    return nil
+end
+
+local function imageExtension(data)
+    if data:sub(1, 4) == "\137PNG" then return "png" end
+    if data:byte(1) == 0xFF and data:byte(2) == 0xD8 then return "jpg" end
+    return nil
+end
+
+local function showLogoImage(asset)
+    logoImage.Image = asset
+    logoImage.Visible = true
+    logoText.Visible = false
+end
+
+function API:ClearLogoImage()
+    imageToken = imageToken + 1
+    logoImage.Image = ""
+    logoImage.Visible = false
+    logoText.Visible = true
+end
+
+function API:SetLogoImage(url, callback)
+    if url == nil or url == "" then
+        API:ClearLogoImage()
+        if callback then pcall(callback, true, "dihapus") end
+        return
+    end
+
+    imageToken = imageToken + 1
+    local token = imageToken
+    local function finish(ok, info)
+        if token ~= imageToken then return end
+        if callback then pcall(callback, ok, info) end
+    end
+
+    local direct = tostring(url)
+    if type(url) == "number" or direct:match("^%d+$") then
+        direct = "rbxassetid://" .. direct
+    end
+    if direct:match("^rbxassetid://") or direct:match("^rbxasset://") then
+        showLogoImage(direct)
+        return finish(true, direct)
+    end
+
+    if not direct:match("^https?://") then
+        return finish(false, "link harus diawali http:// atau https://")
+    end
+
+    task.spawn(function()
+        local getAsset = nil
+        if typeof(getcustomasset) == "function" then
+            getAsset = getcustomasset
+        elseif typeof(getsynasset) == "function" then
+            getAsset = getsynasset
+        end
+        if not getAsset or typeof(writefile) ~= "function" or typeof(isfile) ~= "function" then
+            return finish(false, "executor tidak mendukung writefile/isfile/getcustomasset")
+        end
+
+        ensureFolder(CFG.ConfigDir)
+        ensureFolder(CFG.CacheDir)
+
+        local base = CFG.CacheDir .. "/logo_" .. hashString(direct)
+        local path = nil
+        for _, ext in ipairs({ "png", "jpg" }) do
+            local okf, exists = pcall(isfile, base .. "." .. ext)
+            if okf and exists then
+                path = base .. "." .. ext
+                break
+            end
+        end
+
+        if not path then
+            local data = downloadBody(direct)
+            if not data then
+                return finish(false, "gagal download gambar dari link")
+            end
+            if #data > MAX_IMAGE_BYTES then
+                return finish(false, "gambar terlalu besar (maksimal 8 MB)")
+            end
+            local ext = imageExtension(data)
+            if not ext then
+                return finish(false, "format tidak didukung, pakai PNG atau JPG")
+            end
+            local okw, err = pcall(writefile, base .. "." .. ext, data)
+            if not okw then
+                return finish(false, "gagal menyimpan cache: " .. tostring(err))
+            end
+            path = base .. "." .. ext
+        end
+
+        local oka, asset = pcall(getAsset, path)
+        if not oka or not asset or asset == "" then
+            return finish(false, "getcustomasset gagal membaca file cache")
+        end
+        if token ~= imageToken then return end
+        showLogoImage(asset)
+        finish(true, path)
+    end)
+end
+
+local BZ_VERSION = "v2.6"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -1599,7 +2067,7 @@ end
 
 local function buildUICategory()
     local prev = currentCat
-    createCategory("ui", "UI", true, { order = 9998, noSelect = true })
+    createCategory("ui", "UI", true, { order = 9998, noSelect = true, icon = "palette" })
     currentCat = "ui"
 
     API:AddSection("Logo")
@@ -1615,6 +2083,7 @@ local function buildUICategory()
         logo.BackgroundTransparency = a
         logoStroke.Transparency = a
         logoText.TextTransparency = a
+        logoImage.ImageTransparency = a
     end, 5)
 
     API:AddSection("Thema")
@@ -1655,7 +2124,7 @@ local function buildDevTools()
     if string.lower(player.Name) ~= string.lower(DEV_USERNAME) then return end
 
     local prev = currentCat
-    createCategory("devtools", "Dev Tools", true, { order = 9999, noSelect = true })
+    createCategory("devtools", "Dev Tools", true, { order = 9999, noSelect = true, icon = "wrench" })
     currentCat = "devtools"
 
     local status
@@ -1715,5 +2184,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v2.3 module ready.")
+print("[BZ] Menu UI v2.6 module ready.")
 return API
