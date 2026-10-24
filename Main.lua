@@ -148,7 +148,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.fromOffset(18, 32)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v2.9 · Studio The Clown"
+subtitle.Text = "v3.0 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -263,31 +263,42 @@ local function makeBody()
     return b
 end
 
-local resizeHandle = Instance.new("Frame", menu)
-resizeHandle.Name = "ResizeHandle"
-resizeHandle.Size = UDim2.fromOffset(16, 16)
-resizeHandle.Position = UDim2.new(1, -16, 1, -16)
-resizeHandle.BackgroundColor3 = C.Accent
-resizeHandle.BackgroundTransparency = 1
-resizeHandle.BorderSizePixel = 0
-resizeHandle.Active = true
-resizeHandle.ZIndex = 5
-Instance.new("UICorner", resizeHandle).CornerRadius = UDim.new(0, 4)
-local resizeIcon = Instance.new("TextLabel", resizeHandle)
-resizeIcon.Size = UDim2.fromScale(1, 1)
-resizeIcon.BackgroundTransparency = 1
-resizeIcon.Text = "◢"
-resizeIcon.Font = FontBold
-resizeIcon.TextSize = 11
-resizeIcon.TextColor3 = C.TextDim
-resizeIcon.ZIndex = 6
+local resizeHandles = {}
 
-resizeHandle.MouseEnter:Connect(function()
-    TweenService:Create(resizeHandle, TweenInfo.new(0.12), {BackgroundTransparency = 0.85}):Play()
-end)
-resizeHandle.MouseLeave:Connect(function()
-    TweenService:Create(resizeHandle, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
-end)
+local function makeResizeHandle(name, ax, ay, glyph)
+    local h = Instance.new("Frame", menu)
+    h.Name = name
+    h.Size = UDim2.fromOffset(14, 14)
+    h.Position = UDim2.new(ax, ax == 1 and -14 or 0, ay, ay == 1 and -14 or 0)
+    h.BackgroundColor3 = C.Accent
+    h.BackgroundTransparency = 1
+    h.BorderSizePixel = 0
+    h.Active = true
+    h.ZIndex = 5
+    Instance.new("UICorner", h).CornerRadius = UDim.new(0, 4)
+    local icon = Instance.new("TextLabel", h)
+    icon.Size = UDim2.fromScale(1, 1)
+    icon.BackgroundTransparency = 1
+    icon.Text = glyph
+    icon.Font = FontBold
+    icon.TextSize = 11
+    icon.TextColor3 = C.TextDim
+    icon.ZIndex = 6
+    h.MouseEnter:Connect(function()
+        TweenService:Create(h, TweenInfo.new(0.12), {BackgroundTransparency = 0.85}):Play()
+    end)
+    h.MouseLeave:Connect(function()
+        TweenService:Create(h, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
+    end)
+
+    resizeHandles[#resizeHandles + 1] = { frame = h, sx = (ax == 1) and 1 or -1, sy = (ay == 1) and 1 or -1 }
+    return h
+end
+
+local resizeHandle = makeResizeHandle("ResizeHandle", 1, 1, "◢")
+makeResizeHandle("ResizeHandleBL", 0, 1, "◣")
+makeResizeHandle("ResizeHandleTL", 0, 0, "◤")
+makeResizeHandle("ResizeHandleTR", 1, 0, "◥")
 
 local registry = {}
 local layoutCounter = 0
@@ -315,6 +326,7 @@ local function applyPending(name)
         or (e.kind == "slider" and "number")
         or (e.kind == "select" and "string")
         or (e.kind == "multiselect" and "table")
+        or (e.kind == "keybind" and "string")
     if want and type(v) == want then e.set(v) end
 end
 local activeSlider = nil
@@ -1520,6 +1532,181 @@ function API:SetSelect(name, value, silent)
     if e and e.kind == "select" then e.set(value, silent) end
 end
 
+local keybinds = {}
+local listeningBind = nil
+
+local MODIFIER_GROUPS = {
+    LeftControl = "Ctrl", RightControl = "Ctrl",
+    LeftShift = "Shift", RightShift = "Shift",
+    LeftAlt = "Alt", RightAlt = "Alt",
+}
+local KEY_LABELS = {
+    Return = "Enter", Backquote = "`", LeftBracket = "[", RightBracket = "]", Semicolon = ";",
+    Quote = "'", Comma = ",", Period = ".", Slash = "/", BackSlash = "\\", Minus = "-", Equals = "=",
+    Zero = "0", One = "1", Two = "2", Three = "3", Four = "4",
+    Five = "5", Six = "6", Seven = "7", Eight = "8", Nine = "9",
+}
+
+local function normalizeKeyName(key)
+    if key == nil then return nil end
+    if typeof(key) == "EnumItem" then key = key.Name end
+    key = tostring(key)
+    local lower = string.lower(key)
+    if key == "" or lower == "none" then return nil end
+    if lower == "ctrl" or lower == "control" then return "Ctrl" end
+    if lower == "shift" then return "Shift" end
+    if lower == "alt" then return "Alt" end
+    if MODIFIER_GROUPS[key] then return MODIFIER_GROUPS[key] end
+    local ok, kc = pcall(function() return Enum.KeyCode[key] end)
+    if ok and kc then return key end
+    return nil
+end
+
+local function keyMatches(bound, keyCode)
+    if not bound then return false end
+    return (MODIFIER_GROUPS[keyCode.Name] or keyCode.Name) == bound
+end
+
+local function prettyKey(key)
+    return KEY_LABELS[key] or key
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+
+    if listeningBind then
+        local code = input.KeyCode
+        if code == Enum.KeyCode.Escape then
+            listeningBind.cancel()
+        elseif code == Enum.KeyCode.Backspace or code == Enum.KeyCode.Delete then
+            listeningBind.assign(nil)
+        else
+            local k = normalizeKeyName(code)
+            if k then listeningBind.assign(k) end
+        end
+        return
+    end
+
+    if processed then return end
+    for _, e in pairs(keybinds) do
+        if e.key and e.callback and keyMatches(e.key, input.KeyCode) then
+            task.spawn(pcall, e.callback, e.key)
+        end
+    end
+end)
+
+function API:AddKeyBindInput(name, labelText, default, callback, onChange)
+    local PILL_W = 108
+
+    local row = Instance.new("Frame", currentBody())
+    row.Name = name .. "_Row"
+    row.Size = UDim2.new(1, 0, 0, 46)
+    row.BackgroundColor3 = C.Surface
+    row.BorderSizePixel = 0
+    row.LayoutOrder = nextOrder()
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
+    local s = Instance.new("UIStroke", row)
+    s.Color = C.Stroke
+    s.Thickness = 1
+    s.Transparency = 0.6
+
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(1, -(PILL_W + 26), 1, 0)
+    lbl.Position = UDim2.fromOffset(14, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText or name
+    lbl.Font = Font
+    lbl.TextSize = 14
+    lbl.TextColor3 = C.Text
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextTruncate = Enum.TextTruncate.AtEnd
+
+    local pill = Instance.new("TextButton", row)
+    pill.Size = UDim2.fromOffset(PILL_W, 28)
+    pill.AnchorPoint = Vector2.new(1, 0.5)
+    pill.Position = UDim2.new(1, -12, 0.5, 0)
+    pill.BackgroundColor3 = C.Surface2
+    pill.BorderSizePixel = 0
+    pill.AutoButtonColor = false
+    pill.Font = FontBold
+    pill.TextSize = 13
+    pill.Text = ""
+    Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 8)
+
+    local entry = { key = normalizeKeyName(default), callback = callback }
+    keybinds[name] = entry
+    local listening = false
+    local ctl = {}
+
+    local function refresh()
+        if listening then
+            pill.Text = "Tekan tombol…"
+            pill.TextColor3 = C.TextDim
+        elseif entry.key then
+            pill.Text = prettyKey(entry.key)
+            pill.TextColor3 = C.Accent
+        else
+            pill.Text = "Tidak ada"
+            pill.TextColor3 = C.TextDim
+        end
+    end
+
+    local function stopListening()
+        listening = false
+        if listeningBind == ctl then listeningBind = nil end
+        refresh()
+    end
+
+    function ctl.cancel() stopListening() end
+    function ctl.assign(k)
+        entry.key = k
+        stopListening()
+        if onChange then pcall(onChange, k) end
+    end
+
+    pill.MouseButton1Click:Connect(function()
+        if listening then
+            stopListening()
+            return
+        end
+        if listeningBind then listeningBind.cancel() end
+        listening = true
+        listeningBind = ctl
+        refresh()
+    end)
+
+    refresh()
+
+    registry[name] = {
+        kind = "keybind",
+        set = function(v, silent)
+            entry.key = normalizeKeyName(v)
+            refresh()
+            if not silent and onChange then pcall(onChange, entry.key) end
+        end,
+        get = function() return entry.key or "None" end,
+        row = row,
+    }
+    applyPending(name)
+    return registry[name]
+end
+API.AddKeyBind = API.AddKeyBindInput
+
+function API:GetKeyBind(name)
+    local e = registry[name]
+    if e and e.kind == "keybind" then return e.get() end
+    return nil
+end
+
+function API:SetKeyBind(name, key, silent)
+    local e = registry[name]
+    if e and e.kind == "keybind" then e.set(key, silent) end
+end
+
+function API:SetMenuKey(key)
+    API:SetKeyBind("ui_menu_key", key)
+end
+
 function API:SetTheme(themeName)
     local newT = THEMES[themeName]
     if not newT then return false end
@@ -1567,7 +1754,7 @@ function API:SaveConfig()
     end
     local items = {}
     for name, e in pairs(registry) do
-        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" or e.kind == "multiselect" then
+        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" or e.kind == "multiselect" or e.kind == "keybind" then
             items[name] = e.get()
         end
     end
@@ -1755,6 +1942,7 @@ function API:RemoveItem(name)
     local e = registry[name]
     if e and e.row then e.row:Destroy() end
     registry[name] = nil
+    keybinds[name] = nil
 end
 
 local function computeMenuPos()
@@ -1891,15 +2079,20 @@ header.InputBegan:Connect(function(input)
     end
 end)
 
-local resizing, resizeStart, resizeStartSize = false, nil, nil
-resizeHandle.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-    or input.UserInputType == Enum.UserInputType.Touch then
-        resizing = true
-        resizeStart = input.Position
-        resizeStartSize = menu.AbsoluteSize
-    end
-end)
+local resizing, resizeStart, resizeStartSize, resizeStartPos = false, nil, nil, nil
+local resizeSX, resizeSY = 1, 1
+for _, rh in ipairs(resizeHandles) do
+    rh.frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            resizing = true
+            resizeStart = input.Position
+            resizeStartSize = menu.AbsoluteSize
+            resizeStartPos = menu.Position
+            resizeSX, resizeSY = rh.sx, rh.sy
+        end
+    end)
+end
 
 UserInputService.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement
@@ -1929,9 +2122,13 @@ UserInputService.InputChanged:Connect(function(input)
         if resizing and resizeStart then
             local d = input.Position - resizeStart
             local maxW, maxH = menuMaxSize()
-            local w = math.clamp(resizeStartSize.X + d.X, CFG.MenuWMin, maxW)
-            local h = math.clamp(resizeStartSize.Y + d.Y, CFG.MenuHMin, maxH)
+            local w = math.clamp(resizeStartSize.X + resizeSX * d.X, CFG.MenuWMin, maxW)
+            local h = math.clamp(resizeStartSize.Y + resizeSY * d.Y, CFG.MenuHMin, maxH)
             menu.Size = UDim2.fromOffset(w, h)
+
+            local px = resizeStartPos.X.Offset + ((resizeSX == -1) and (resizeStartSize.X - w) or 0)
+            local py = resizeStartPos.Y.Offset + ((resizeSY == -1) and (resizeStartSize.Y - h) or 0)
+            menu.Position = UDim2.new(resizeStartPos.X.Scale, px, resizeStartPos.Y.Scale, py)
         end
     end
 end)
@@ -1961,6 +2158,7 @@ UserInputService.InputEnded:Connect(function(input)
         end
         if resizing then
             lastSize = UDim2.fromOffset(menu.AbsoluteSize.X, menu.AbsoluteSize.Y)
+            lastPos = menu.Position
         end
         dragMenu = false
         resizing = false
@@ -2139,7 +2337,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v2.9"
+local BZ_VERSION = "v3.0"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -2216,6 +2414,12 @@ local function buildUICategory()
     API:AddSelectMenu("ui_theme", "Thema", THEME_ORDER, "Ungu", function(v)
         API:SetTheme(v)
     end)
+
+    API:AddSection("Keyboard")
+    API:AddKeyBindInput("ui_menu_key", "Buka/Tutup Menu", "Ctrl", function()
+        API:Toggle()
+    end)
+    API:AddNote("Tekan tombol ini untuk membuka atau menutup menu. Klik kotaknya lalu tekan tombol baru untuk mengganti (Esc batal, Backspace kosongkan).")
 
     API:AddSection("Config")
     local cfgStatus
@@ -2310,5 +2514,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v2.9 module ready.")
+print("[BZ] Menu UI v3.0 module ready.")
 return API
