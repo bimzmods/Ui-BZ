@@ -148,7 +148,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.fromOffset(18, 32)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v3.0 · Studio The Clown"
+subtitle.Text = "v3.1 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -265,40 +265,57 @@ end
 
 local resizeHandles = {}
 
-local function makeResizeHandle(name, ax, ay, glyph)
+local function makeResizeHandle(name, pos, size, sx, sy, glyph)
     local h = Instance.new("Frame", menu)
     h.Name = name
-    h.Size = UDim2.fromOffset(14, 14)
-    h.Position = UDim2.new(ax, ax == 1 and -14 or 0, ay, ay == 1 and -14 or 0)
+    h.Position = pos
+    h.Size = size
     h.BackgroundColor3 = C.Accent
     h.BackgroundTransparency = 1
     h.BorderSizePixel = 0
     h.Active = true
     h.ZIndex = 5
-    Instance.new("UICorner", h).CornerRadius = UDim.new(0, 4)
-    local icon = Instance.new("TextLabel", h)
-    icon.Size = UDim2.fromScale(1, 1)
-    icon.BackgroundTransparency = 1
-    icon.Text = glyph
-    icon.Font = FontBold
-    icon.TextSize = 11
-    icon.TextColor3 = C.TextDim
-    icon.ZIndex = 6
-    h.MouseEnter:Connect(function()
-        TweenService:Create(h, TweenInfo.new(0.12), {BackgroundTransparency = 0.85}):Play()
-    end)
-    h.MouseLeave:Connect(function()
-        TweenService:Create(h, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
-    end)
-
-    resizeHandles[#resizeHandles + 1] = { frame = h, sx = (ax == 1) and 1 or -1, sy = (ay == 1) and 1 or -1 }
+    if glyph then
+        Instance.new("UICorner", h).CornerRadius = UDim.new(0, 4)
+        local icon = Instance.new("TextLabel", h)
+        icon.Size = UDim2.fromScale(1, 1)
+        icon.BackgroundTransparency = 1
+        icon.Text = glyph
+        icon.Font = FontBold
+        icon.TextSize = 11
+        icon.TextColor3 = C.TextDim
+        icon.ZIndex = 6
+        h.MouseEnter:Connect(function()
+            TweenService:Create(h, TweenInfo.new(0.12), {BackgroundTransparency = 0.85}):Play()
+        end)
+        h.MouseLeave:Connect(function()
+            TweenService:Create(h, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
+        end)
+    end
+    resizeHandles[#resizeHandles + 1] = { frame = h, sx = sx, sy = sy }
     return h
 end
 
-local resizeHandle = makeResizeHandle("ResizeHandle", 1, 1, "◢")
-makeResizeHandle("ResizeHandleBL", 0, 1, "◣")
-makeResizeHandle("ResizeHandleTL", 0, 0, "◤")
-makeResizeHandle("ResizeHandleTR", 1, 0, "◥")
+local resizeHandle = makeResizeHandle("ResizeHandle", UDim2.new(1, -14, 1, -14), UDim2.fromOffset(14, 14), 1, 1, "◢")
+makeResizeHandle("ResizeHandleBL", UDim2.new(0, 0, 1, -14), UDim2.fromOffset(14, 14), -1, 1, "◣")
+local bottomEdge = makeResizeHandle("ResizeBottom", UDim2.new(0, 14, 1, -10), UDim2.new(1, -28, 0, 10), 0, 1, nil)
+makeResizeHandle("ResizeLeft", UDim2.new(0, 0, 0, CFG.HeaderH), UDim2.new(0, 6, 1, -(CFG.HeaderH + 14)), -1, 0, nil)
+
+local grabber = Instance.new("Frame", bottomEdge)
+grabber.Name = "Grabber"
+grabber.AnchorPoint = Vector2.new(0.5, 0.5)
+grabber.Position = UDim2.fromScale(0.5, 0.5)
+grabber.Size = UDim2.fromOffset(36, 4)
+grabber.BackgroundColor3 = C.TextDim
+grabber.BackgroundTransparency = 0.6
+grabber.BorderSizePixel = 0
+Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
+bottomEdge.MouseEnter:Connect(function()
+    TweenService:Create(grabber, TweenInfo.new(0.12), {BackgroundTransparency = 0.2}):Play()
+end)
+bottomEdge.MouseLeave:Connect(function()
+    TweenService:Create(grabber, TweenInfo.new(0.12), {BackgroundTransparency = 0.6}):Play()
+end)
 
 local registry = {}
 local layoutCounter = 0
@@ -2337,7 +2354,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v3.0"
+local BZ_VERSION = "v3.1"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -2514,5 +2531,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v3.0 module ready.")
+print("[BZ] Menu UI v3.1 module ready.")
 return API
