@@ -14,18 +14,18 @@ if old then old:Destroy() end
 
 local CFG = {
     Colors = {
-        Bg        = Color3.fromRGB(18, 13, 28),
-        Surface   = Color3.fromRGB(28, 21, 43),
-        Surface2  = Color3.fromRGB(41, 31, 62),
-        Accent    = Color3.fromRGB(157, 90, 255),
-        Text      = Color3.fromRGB(240, 235, 252),
-        TextDim   = Color3.fromRGB(165, 152, 190),
-        Stroke    = Color3.fromRGB(78, 56, 118),
-        On        = Color3.fromRGB(170, 100, 255),
-        Off       = Color3.fromRGB(70, 58, 95),
+        Bg        = Color3.fromRGB(22, 21, 27),
+        Surface   = Color3.fromRGB(37, 35, 45),
+        Surface2  = Color3.fromRGB(53, 51, 64),
+        Accent    = Color3.fromRGB(191, 90, 242),
+        Text      = Color3.fromRGB(245, 245, 247),
+        TextDim   = Color3.fromRGB(150, 150, 162),
+        Stroke    = Color3.fromRGB(66, 64, 80),
+        On        = Color3.fromRGB(48, 209, 88),
+        Off       = Color3.fromRGB(72, 70, 86),
     },
-    Font      = Enum.Font.GothamMedium,
-    FontBold  = Enum.Font.GothamBold,
+    Font      = Enum.Font.BuilderSans,
+    FontBold  = Enum.Font.BuilderSansBold,
     MenuWDef  = 520,
     MenuHDef  = 720,
     MenuWMin  = 220,
@@ -59,13 +59,13 @@ end
 
 local THEME_ORDER = { "Cyan", "Kuning", "Merah", "Ungu", "Sakura", "White", "Black" }
 local THEMES = {
-    Ungu   = palette({{18,13,28},{28,21,43},{41,31,62},{157,90,255},{240,235,252},{165,152,190},{78,56,118},{170,100,255},{70,58,95}}),
-    Cyan   = palette({{10,20,26},{16,32,42},{24,46,60},{0,200,230},{232,248,252},{140,175,188},{30,80,98},{30,220,240},{50,72,84}}),
-    Kuning = palette({{24,21,10},{38,33,14},{54,47,20},{250,204,21},{252,248,230},{190,178,140},{104,88,28},{255,215,60},{84,76,48}}),
-    Merah  = palette({{26,12,14},{40,18,22},{58,26,32},{239,68,68},{252,236,236},{192,148,150},{110,40,46},{248,90,90},{88,56,60}}),
-    Sakura = palette({{36,22,30},{50,31,42},{68,42,57},{255,143,184},{255,240,246},{205,160,180},{120,70,96},{255,166,200},{100,70,86}}),
-    White  = palette({{245,245,248},{232,232,238},{218,218,226},{37,99,235},{30,30,38},{110,110,125},{200,200,210},{70,190,110},{180,180,190}}),
-    Black  = palette({{8,8,8},{18,18,18},{32,32,32},{230,230,230},{245,245,245},{140,140,140},{58,58,58},{125,125,132},{64,64,64}}),
+    Ungu   = palette({{22,21,27},{37,35,45},{53,51,64},{191,90,242},{245,245,247},{150,150,162},{66,64,80},{48,209,88},{72,70,86}}),
+    Cyan   = palette({{18,24,28},{31,40,46},{45,57,65},{64,200,224},{245,247,248},{146,158,165},{58,72,80},{48,209,88},{66,80,89}}),
+    Kuning = palette({{27,25,18},{43,40,29},{60,56,41},{255,214,10},{247,246,240},{160,156,140},{76,71,52},{48,209,88},{82,77,58}}),
+    Merah  = palette({{28,19,20},{45,31,33},{63,44,46},{255,69,58},{248,243,243},{166,148,150},{80,56,58},{48,209,88},{88,62,64}}),
+    Sakura = palette({{30,22,26},{48,36,42},{66,50,58},{255,138,180},{250,244,247},{170,150,160},{84,62,72},{48,209,88},{92,70,80}}),
+    White  = palette({{242,242,247},{254,254,254},{229,229,234},{0,122,255},{28,28,30},{138,138,142},{214,214,219},{52,199,89},{200,200,206}}),
+    Black  = palette({{4,4,5},{22,22,24},{40,40,43},{10,132,255},{245,245,247},{140,140,148},{52,52,56},{48,209,88},{64,64,69}}),
 }
 
 local screenGui = Instance.new("ScreenGui")
@@ -80,13 +80,13 @@ local logo = Instance.new("Frame", screenGui)
 logo.Name = "Logo"
 logo.Size = UDim2.fromOffset(56, 56)
 logo.Position = CFG.LogoStart
-logo.BackgroundColor3 = C.Bg
+logo.BackgroundColor3 = C.Surface
 logo.BorderSizePixel = 0
 logo.Active = true
-Instance.new("UICorner", logo).CornerRadius = UDim.new(0, 14)
+Instance.new("UICorner", logo).CornerRadius = UDim.new(0, 16)
 local logoStroke = Instance.new("UIStroke", logo)
-logoStroke.Color = C.Accent
-logoStroke.Thickness = 1.5
+logoStroke.Color = C.Stroke
+logoStroke.Thickness = 1
 
 local logoText = Instance.new("TextLabel", logo)
 logoText.Size = UDim2.fromScale(1, 1)
@@ -114,31 +114,23 @@ menu.BackgroundColor3 = C.Bg
 menu.BorderSizePixel = 0
 menu.Visible = false
 menu.ClipsDescendants = true
-Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 16)
+Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 22)
 local menuStroke = Instance.new("UIStroke", menu)
 menuStroke.Color = C.Stroke
-menuStroke.Thickness = 1.5
+menuStroke.Thickness = 1
 local menuScale = Instance.new("UIScale", menu)
 menuScale.Scale = 1
 
 local header = Instance.new("Frame", menu)
 header.Name = "Header"
 header.Size = UDim2.new(1, 0, 0, CFG.HeaderH)
-header.BackgroundColor3 = C.Surface
+header.BackgroundColor3 = C.Bg
 header.BorderSizePixel = 0
-Instance.new("UICorner", header).CornerRadius = UDim.new(0, 16)
-local headerFix = Instance.new("Frame", header)
-headerFix.Size = UDim2.new(1, 0, 0, 16)
-headerFix.Position = UDim2.new(0, 0, 1, -16)
-headerFix.BackgroundColor3 = C.Surface
-headerFix.BorderSizePixel = 0
 local headerLine = Instance.new("Frame", header)
-headerLine.Size = UDim2.new(1, 0, 0, 2)
-headerLine.Position = UDim2.new(0, 0, 1, -2)
-headerLine.BackgroundColor3 = C.Accent
+headerLine.Size = UDim2.new(1, 0, 0, 1)
+headerLine.Position = UDim2.new(0, 0, 1, -1)
+headerLine.BackgroundColor3 = C.Stroke
 headerLine.BorderSizePixel = 0
-local lineGrad = Instance.new("UIGradient", headerLine)
-lineGrad.Color = ColorSequence.new(C.Accent, C.Surface)
 
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, -60, 0, 22)
@@ -146,7 +138,7 @@ title.Position = UDim2.fromOffset(18, 8)
 title.BackgroundTransparency = 1
 title.Text = "BZ Menu"
 title.Font = FontBold
-title.TextSize = 18
+title.TextSize = 17
 title.TextColor3 = C.Text
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.TextYAlignment = Enum.TextYAlignment.Center
@@ -156,7 +148,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.fromOffset(18, 32)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v2.8 · Studio The Clown"
+subtitle.Text = "v2.9 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -170,7 +162,7 @@ closeBtn.Position = UDim2.new(1, -38, 0, 12)
 closeBtn.BackgroundColor3 = C.Surface2
 closeBtn.AutoButtonColor = false
 closeBtn.Text = ""
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
 
 local closeIcon = Instance.new("TextLabel", closeBtn)
 closeIcon.Size = UDim2.fromScale(1, 1)
@@ -212,6 +204,7 @@ collapseBtn.Name = "Collapse"
 collapseBtn.LayoutOrder = 0
 collapseBtn.Size = UDim2.new(1, 0, 0, 26)
 collapseBtn.BackgroundColor3 = C.Surface2
+collapseBtn.BackgroundTransparency = 1
 collapseBtn.AutoButtonColor = false
 collapseBtn.Text = ""
 Instance.new("UICorner", collapseBtn).CornerRadius = UDim.new(0, 8)
@@ -248,9 +241,9 @@ local function makeBody()
     b.Position = UDim2.fromOffset(0, 0)
     b.BackgroundTransparency = 1
     b.BorderSizePixel = 0
-    b.ScrollBarThickness = 6
-    b.ScrollBarImageColor3 = C.Accent
-    b.ScrollBarImageTransparency = 0.3
+    b.ScrollBarThickness = 3
+    b.ScrollBarImageColor3 = C.TextDim
+    b.ScrollBarImageTransparency = 0.5
     b.CanvasSize = UDim2.new(0, 0, 0, 0)
     b.AutomaticCanvasSize = Enum.AutomaticSize.Y
     b.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -258,7 +251,7 @@ local function makeBody()
     b.Visible = false
 
     local layout = Instance.new("UIListLayout", b)
-    layout.Padding = UDim.new(0, 10)
+    layout.Padding = UDim.new(0, 8)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
@@ -275,7 +268,7 @@ resizeHandle.Name = "ResizeHandle"
 resizeHandle.Size = UDim2.fromOffset(16, 16)
 resizeHandle.Position = UDim2.new(1, -16, 1, -16)
 resizeHandle.BackgroundColor3 = C.Accent
-resizeHandle.BackgroundTransparency = 0.55
+resizeHandle.BackgroundTransparency = 1
 resizeHandle.BorderSizePixel = 0
 resizeHandle.Active = true
 resizeHandle.ZIndex = 5
@@ -286,14 +279,14 @@ resizeIcon.BackgroundTransparency = 1
 resizeIcon.Text = "◢"
 resizeIcon.Font = FontBold
 resizeIcon.TextSize = 11
-resizeIcon.TextColor3 = C.Text
+resizeIcon.TextColor3 = C.TextDim
 resizeIcon.ZIndex = 6
 
 resizeHandle.MouseEnter:Connect(function()
-    TweenService:Create(resizeHandle, TweenInfo.new(0.12), {BackgroundTransparency = 0.2}):Play()
+    TweenService:Create(resizeHandle, TweenInfo.new(0.12), {BackgroundTransparency = 0.85}):Play()
 end)
 resizeHandle.MouseLeave:Connect(function()
-    TweenService:Create(resizeHandle, TweenInfo.new(0.12), {BackgroundTransparency = 0.55}):Play()
+    TweenService:Create(resizeHandle, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
 end)
 
 local registry = {}
@@ -555,12 +548,11 @@ function API:SelectCategory(name)
     for n, cat in pairs(categories) do
         local on = (n == name)
         local info = TweenInfo.new(0.15)
-        local fg = on and C.Bg or C.TextDim
-        TweenService:Create(cat.button, info, {BackgroundColor3 = on and C.Accent or C.Surface2}):Play()
-        TweenService:Create(cat.label, info, {TextColor3 = fg}):Play()
+        TweenService:Create(cat.button, info, {BackgroundTransparency = on and 0 or 1}):Play()
+        TweenService:Create(cat.label, info, {TextColor3 = on and C.Text or C.TextDim}):Play()
         if cat.icon then
             local prop = cat.icon:IsA("ImageLabel") and "ImageColor3" or "TextColor3"
-            TweenService:Create(cat.icon, info, {[prop] = fg}):Play()
+            TweenService:Create(cat.icon, info, {[prop] = on and C.Accent or C.TextDim}):Play()
         end
     end
 
@@ -609,12 +601,13 @@ local function createCategory(name, labelText, explicit, opts)
 
     local btn = Instance.new("TextButton", tabBar)
     btn.Name = name .. "_Tab"
-    btn.Size = UDim2.new(1, 0, 0, 34)
+    btn.Size = UDim2.new(1, 0, 0, 36)
     btn.BackgroundColor3 = C.Surface2
+    btn.BackgroundTransparency = 1
     btn.AutoButtonColor = false
     btn.Text = ""
     btn.LayoutOrder = (opts and opts.order) or categoryOrder
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
     local p = Instance.new("UIPadding", btn)
     p.PaddingLeft = UDim.new(0, 8)
     p.PaddingRight = UDim.new(0, 6)
@@ -666,7 +659,7 @@ function API:SetCategoryIcon(name, icon)
     end
     cat.icon = makeTabIcon(cat.button, icon) or makeLetterIcon(cat.button, cat.label.Text)
     if cat.icon then
-        local fg = (selectedCat == name) and C.Bg or C.TextDim
+        local fg = (selectedCat == name) and C.Accent or C.TextDim
         local prop = cat.icon:IsA("ImageLabel") and "ImageColor3" or "TextColor3"
         cat.icon[prop] = fg
     end
@@ -686,14 +679,16 @@ end
 
 function API:AddSection(text)
     local lbl = Instance.new("TextLabel", currentBody())
-    lbl.Size = UDim2.new(1, 0, 0, 20)
+    lbl.Size = UDim2.new(1, 0, 0, 22)
     lbl.BackgroundTransparency = 1
     lbl.Text = string.upper(text)
-    lbl.Font = FontBold
-    lbl.TextSize = 11
-    lbl.TextColor3 = C.Accent
+    lbl.Font = Font
+    lbl.TextSize = 12
+    lbl.TextColor3 = C.TextDim
     lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextYAlignment = Enum.TextYAlignment.Bottom
     lbl.LayoutOrder = nextOrder()
+    Instance.new("UIPadding", lbl).PaddingLeft = UDim.new(0, 6)
     return lbl
 end
 
@@ -722,10 +717,11 @@ function API:AddToggle(name, labelText, default, callback, style)
     row.BackgroundColor3 = C.Surface
     row.BorderSizePixel = 0
     row.LayoutOrder = nextOrder()
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
     local rowStroke = Instance.new("UIStroke", row)
     rowStroke.Color = C.Stroke
     rowStroke.Thickness = 1
+    rowStroke.Transparency = 0.6
 
     local lbl = Instance.new("TextLabel", row)
     lbl.Size = UDim2.new(1, -80, 1, 0)
@@ -741,7 +737,7 @@ function API:AddToggle(name, labelText, default, callback, style)
     box.Name = "Indicator"
     box.AnchorPoint = Vector2.new(1, 0.5)
     box.Position = UDim2.new(1, -14, 0.5, 0)
-    box.Size = UDim2.fromOffset(54, 28)
+    box.Size = UDim2.fromOffset(56, 32)
     box.BackgroundTransparency = 1
 
     local clickArea = Instance.new("TextButton", row)
@@ -763,19 +759,19 @@ function API:AddToggle(name, labelText, default, callback, style)
         local track = Instance.new("Frame", box)
         track.AnchorPoint = Vector2.new(1, 0.5)
         track.Position = UDim2.new(1, 0, 0.5, 0)
-        track.Size = UDim2.fromOffset(46, 24)
+        track.Size = UDim2.fromOffset(50, 30)
         track.BackgroundColor3 = C.Off
         track.BorderSizePixel = 0
         Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
         local knob = Instance.new("Frame", track)
-        knob.Size = UDim2.fromOffset(18, 18)
-        knob.Position = UDim2.fromOffset(3, 3)
-        knob.BackgroundColor3 = C.Text
+        knob.Size = UDim2.fromOffset(26, 26)
+        knob.Position = UDim2.fromOffset(2, 2)
+        knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         knob.BorderSizePixel = 0
         Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
         return function(on, animate)
             put(track, {BackgroundColor3 = on and C.On or C.Off}, animate)
-            put(knob, {Position = on and UDim2.fromOffset(25, 3) or UDim2.fromOffset(3, 3)}, animate)
+            put(knob, {Position = on and UDim2.fromOffset(22, 2) or UDim2.fromOffset(2, 2)}, animate)
         end
     end
 
@@ -908,10 +904,11 @@ function API:AddNote(text, name)
     row.BackgroundColor3 = C.Surface
     row.BorderSizePixel = 0
     row.LayoutOrder = order
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
     local s = Instance.new("UIStroke", row)
     s.Color = C.Stroke
     s.Thickness = 1
+    s.Transparency = 0.6
 
     local pad = Instance.new("UIPadding", row)
     pad.PaddingTop = UDim.new(0, 10)
@@ -950,10 +947,11 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     row.BackgroundColor3 = C.Surface
     row.BorderSizePixel = 0
     row.LayoutOrder = nextOrder()
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
     local s = Instance.new("UIStroke", row)
     s.Color = C.Stroke
     s.Thickness = 1
+    s.Transparency = 0.6
 
     local lbl = Instance.new("TextLabel", row)
     lbl.Size = UDim2.new(1, -66, 1, 0)
@@ -1070,10 +1068,11 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
     row.BackgroundColor3 = C.Surface
     row.BorderSizePixel = 0
     row.LayoutOrder = nextOrder()
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
     local s = Instance.new("UIStroke", row)
     s.Color = C.Stroke
     s.Thickness = 1
+    s.Transparency = 0.6
 
     local lbl = Instance.new("TextLabel", row)
     lbl.Size = UDim2.new(1, -(PILL_W + 26), 1, 0)
@@ -1180,10 +1179,10 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
         popup.BackgroundColor3 = C.Surface
         popup.BorderSizePixel = 0
         popup.ClipsDescendants = true
-        Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 10)
+        Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 12)
         local ps = Instance.new("UIStroke", popup)
-        ps.Color = C.Accent
-        ps.Thickness = 1.25
+        ps.Color = C.Stroke
+        ps.Thickness = 1
 
         local scroll = Instance.new("ScrollingFrame", popup)
         scroll.Size = UDim2.fromScale(1, 1)
@@ -1212,13 +1211,16 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
             b.Name = "Opt_" .. tostring(opt)
             b.LayoutOrder = i
             b.Size = UDim2.new(1, 0, 0, ITEM_H)
-            b.BackgroundColor3 = sel and C.Accent or C.Surface2
+            b.BackgroundColor3 = C.Surface2
+            b.BackgroundTransparency = sel and 0 or 1
             b.BorderSizePixel = 0
             b.AutoButtonColor = false
             b.Text = tostring(opt)
             b.Font = Font
             b.TextSize = 13
-            b.TextColor3 = sel and C.Bg or C.Text
+            b.TextColor3 = sel and C.Accent or C.Text
+            b.TextXAlignment = Enum.TextXAlignment.Left
+            Instance.new("UIPadding", b).PaddingLeft = UDim.new(0, 10)
             Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
             b.MouseButton1Click:Connect(function()
                 closeSelect()
@@ -1267,10 +1269,11 @@ function API:AddMultiSelectMenu(name, labelText, options, defaults, callback)
     row.BackgroundColor3 = C.Surface
     row.BorderSizePixel = 0
     row.LayoutOrder = nextOrder()
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
     local s = Instance.new("UIStroke", row)
     s.Color = C.Stroke
     s.Thickness = 1
+    s.Transparency = 0.6
 
     local lbl = Instance.new("TextLabel", row)
     lbl.Size = UDim2.new(1, -(PILL_W + 26), 1, 0)
@@ -1341,8 +1344,10 @@ function API:AddMultiSelectMenu(name, labelText, options, defaults, callback)
         local b = buttons[opt]
         if not b then return end
         local sel = chosen[opt] == true
-        b.BackgroundColor3 = sel and C.Accent or C.Surface2
-        b.TextColor3 = sel and C.Bg or C.Text
+        b.BackgroundColor3 = C.Surface2
+        b.BackgroundTransparency = sel and 0 or 1
+        b.TextColor3 = sel and C.Accent or C.Text
+        b.Text = sel and ("✓  " .. tostring(opt)) or tostring(opt)
     end
 
     local function setSelected(list, silent)
@@ -1410,10 +1415,10 @@ function API:AddMultiSelectMenu(name, labelText, options, defaults, callback)
         popup.BackgroundColor3 = C.Surface
         popup.BorderSizePixel = 0
         popup.ClipsDescendants = true
-        Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 10)
+        Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 12)
         local ps = Instance.new("UIStroke", popup)
-        ps.Color = C.Accent
-        ps.Thickness = 1.25
+        ps.Color = C.Stroke
+        ps.Thickness = 1
 
         local scroll = Instance.new("ScrollingFrame", popup)
         scroll.Size = UDim2.fromScale(1, 1)
@@ -1450,7 +1455,9 @@ function API:AddMultiSelectMenu(name, labelText, options, defaults, callback)
             b.Text = tostring(opt)
             b.Font = Font
             b.TextSize = 13
-            Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
+            b.TextXAlignment = Enum.TextXAlignment.Left
+            Instance.new("UIPadding", b).PaddingLeft = UDim.new(0, 10)
+            Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
             buttons[opt] = b
             paint(opt)
             b.MouseButton1Click:Connect(function()
@@ -1613,10 +1620,11 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     row.BackgroundColor3 = C.Surface
     row.BorderSizePixel = 0
     row.LayoutOrder = nextOrder()
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
     local s = Instance.new("UIStroke", row)
     s.Color = C.Stroke
     s.Thickness = 1
+    s.Transparency = 0.6
 
     local lbl = Instance.new("TextLabel", row)
     lbl.Size = UDim2.new(1, -100, 0, 24)
@@ -1636,13 +1644,13 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     valLbl.ClearTextOnFocus = false
     valLbl.Font = FontBold
     valLbl.TextSize = 13
-    valLbl.TextColor3 = C.Accent
+    valLbl.TextColor3 = C.Text
     valLbl.TextXAlignment = Enum.TextXAlignment.Center
     Instance.new("UICorner", valLbl).CornerRadius = UDim.new(0, 6)
 
     local track = Instance.new("Frame", row)
-    track.Size = UDim2.new(1, -28, 0, 6)
-    track.Position = UDim2.new(0, 14, 0, 42)
+    track.Size = UDim2.new(1, -28, 0, 4)
+    track.Position = UDim2.new(0, 14, 0, 43)
     track.BackgroundColor3 = C.Off
     track.BorderSizePixel = 0
     Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
@@ -1654,16 +1662,16 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 
     local knob = Instance.new("Frame", track)
-    knob.Size = UDim2.fromOffset(16, 16)
+    knob.Size = UDim2.fromOffset(22, 22)
     knob.AnchorPoint = Vector2.new(0.5, 0.5)
     knob.Position = UDim2.new(0, 0, 0.5, 0)
-    knob.BackgroundColor3 = C.Text
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     knob.BorderSizePixel = 0
     knob.ZIndex = 2
     Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
     local knobStroke = Instance.new("UIStroke", knob)
-    knobStroke.Color = C.Accent
-    knobStroke.Thickness = 2
+    knobStroke.Color = C.Stroke
+    knobStroke.Thickness = 1
 
     local hit = Instance.new("TextButton", row)
     hit.Size = UDim2.new(1, -16, 0, 28)
@@ -1962,8 +1970,8 @@ end)
 closeBtn.MouseButton1Click:Connect(function() API:Close() end)
 
 closeBtn.MouseEnter:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = C.Accent}):Play()
-    TweenService:Create(closeIcon, TweenInfo.new(0.12), {TextColor3 = C.Bg}):Play()
+    TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = C.Stroke}):Play()
+    TweenService:Create(closeIcon, TweenInfo.new(0.12), {TextColor3 = C.Text}):Play()
 end)
 closeBtn.MouseLeave:Connect(function()
     TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = C.Surface2}):Play()
@@ -2131,7 +2139,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v2.8"
+local BZ_VERSION = "v2.9"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -2302,5 +2310,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v2.8 module ready.")
+print("[BZ] Menu UI v2.9 module ready.")
 return API
