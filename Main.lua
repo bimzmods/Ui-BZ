@@ -152,7 +152,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.new(0, 18, 1, -22)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v2.6 · Studio The Clown"
+subtitle.Text = "v2.7 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -867,7 +867,7 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     s.Thickness = 1
 
     local lbl = Instance.new("TextLabel", row)
-    lbl.Size = UDim2.new(1, -60, 1, 0)
+    lbl.Size = UDim2.new(1, -66, 1, 0)
     lbl.Position = UDim2.fromOffset(14, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text = labelText or name
@@ -876,29 +876,45 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local icon = Instance.new("Frame", row)
-    icon.Size = UDim2.fromOffset(22, 22)
-    icon.AnchorPoint = Vector2.new(0.5, 0.5)
-    icon.Position = UDim2.new(1, -26, 0.5, 0)
-    icon.BackgroundColor3 = C.Surface2
-    icon.BorderSizePixel = 0
-    Instance.new("UICorner", icon).CornerRadius = UDim.new(1, 0)
-    local iconStroke = Instance.new("UIStroke", icon)
-    iconStroke.Color = C.Accent
-    iconStroke.Thickness = 1.25
+    local mouse = Instance.new("Frame", row)
+    mouse.Name = "MouseIcon"
+    mouse.AnchorPoint = Vector2.new(0.5, 0.5)
+    mouse.Position = UDim2.new(1, -28, 0.5, 0)
+    mouse.Size = UDim2.fromOffset(18, 26)
+    mouse.BackgroundColor3 = C.Surface2
+    mouse.BorderSizePixel = 0
+    Instance.new("UICorner", mouse).CornerRadius = UDim.new(0, 9)
+    local mouseStroke = Instance.new("UIStroke", mouse)
+    mouseStroke.Color = C.Accent
+    mouseStroke.Thickness = 1.5
 
-    local dot = Instance.new("Frame", icon)
-    dot.Size = UDim2.fromOffset(6, 6)
-    dot.AnchorPoint = Vector2.new(0.5, 0.5)
-    dot.Position = UDim2.fromScale(0.5, 0.5)
-    dot.BackgroundColor3 = C.Accent
-    dot.BorderSizePixel = 0
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    local leftBtn = Instance.new("Frame", mouse)
+    leftBtn.Name = "LeftButton"
+    leftBtn.Position = UDim2.fromOffset(1, 1)
+    leftBtn.Size = UDim2.fromOffset(8, 11)
+    leftBtn.BackgroundColor3 = C.Off
+    leftBtn.BorderSizePixel = 0
+    Instance.new("UICorner", leftBtn).CornerRadius = UDim.new(0, 7)
 
-    local ripple = Instance.new("Frame", icon)
-    ripple.Size = UDim2.fromOffset(6, 6)
+    local hLine = Instance.new("Frame", mouse)
+    hLine.Name = "HLine"
+    hLine.Position = UDim2.fromOffset(0, 12)
+    hLine.Size = UDim2.new(1, 0, 0, 1)
+    hLine.BackgroundColor3 = C.Accent
+    hLine.BorderSizePixel = 0
+
+    local vLine = Instance.new("Frame", mouse)
+    vLine.Name = "VLine"
+    vLine.Position = UDim2.fromOffset(9, 0)
+    vLine.Size = UDim2.fromOffset(1, 12)
+    vLine.BackgroundColor3 = C.Accent
+    vLine.BorderSizePixel = 0
+
+    local ripple = Instance.new("Frame", mouse)
+    ripple.Name = "Ripple"
     ripple.AnchorPoint = Vector2.new(0.5, 0.5)
-    ripple.Position = UDim2.fromScale(0.5, 0.5)
+    ripple.Position = UDim2.fromOffset(5, 7)
+    ripple.Size = UDim2.fromOffset(6, 6)
     ripple.BackgroundTransparency = 1
     ripple.BorderSizePixel = 0
     ripple.Visible = false
@@ -915,20 +931,18 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     local busy = false
 
     local function play()
-        TweenService:Create(icon, TweenInfo.new(0.1), {BackgroundColor3 = C.Accent}):Play()
-        TweenService:Create(dot, TweenInfo.new(0.1), {BackgroundColor3 = C.Bg}):Play()
+        TweenService:Create(leftBtn, TweenInfo.new(0.08), {BackgroundColor3 = C.Accent}):Play()
         ripple.Size = UDim2.fromOffset(6, 6)
         rippleStroke.Transparency = 0
         ripple.Visible = true
         TweenService:Create(ripple, TweenInfo.new(0.35, Enum.EasingStyle.Quart), {
-            Size = UDim2.fromOffset(26, 26)
+            Size = UDim2.fromOffset(28, 28)
         }):Play()
         TweenService:Create(rippleStroke, TweenInfo.new(0.35), {Transparency = 1}):Play()
     end
 
     local function reset()
-        TweenService:Create(icon, TweenInfo.new(0.2), {BackgroundColor3 = C.Surface2}):Play()
-        TweenService:Create(dot, TweenInfo.new(0.2), {BackgroundColor3 = C.Accent}):Play()
+        TweenService:Create(leftBtn, TweenInfo.new(0.2), {BackgroundColor3 = C.Off}):Play()
         ripple.Visible = false
     end
 
@@ -2013,7 +2027,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v2.6"
+local BZ_VERSION = "v2.7"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -2184,5 +2198,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v2.6 module ready.")
+print("[BZ] Menu UI v2.7 module ready.")
 return API
