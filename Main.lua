@@ -118,6 +118,8 @@ Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 16)
 local menuStroke = Instance.new("UIStroke", menu)
 menuStroke.Color = C.Stroke
 menuStroke.Thickness = 1.5
+local menuScale = Instance.new("UIScale", menu)
+menuScale.Scale = 1
 
 local header = Instance.new("Frame", menu)
 header.Name = "Header"
@@ -139,24 +141,28 @@ local lineGrad = Instance.new("UIGradient", headerLine)
 lineGrad.Color = ColorSequence.new(C.Accent, C.Surface)
 
 local title = Instance.new("TextLabel", header)
-title.Size = UDim2.new(1, -60, 1, 0)
-title.Position = UDim2.fromOffset(18, 0)
+title.Size = UDim2.new(1, -60, 0, 22)
+title.Position = UDim2.fromOffset(18, 8)
 title.BackgroundTransparency = 1
 title.Text = "BZ Menu"
 title.Font = FontBold
 title.TextSize = 18
 title.TextColor3 = C.Text
 title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextYAlignment = Enum.TextYAlignment.Center
+title.TextTruncate = Enum.TextTruncate.AtEnd
 
 local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
-subtitle.Position = UDim2.new(0, 18, 1, -22)
+subtitle.Position = UDim2.fromOffset(18, 32)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v2.7 · Studio The Clown"
+subtitle.Text = "v2.8 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
 subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.TextYAlignment = Enum.TextYAlignment.Center
+subtitle.TextTruncate = Enum.TextTruncate.AtEnd
 
 local closeBtn = Instance.new("TextButton", header)
 closeBtn.Size = UDim2.fromOffset(28, 28)
@@ -174,34 +180,72 @@ closeIcon.Font = FontBold
 closeIcon.TextSize = 20
 closeIcon.TextColor3 = C.TextDim
 
-local TAB_H = 38
+local SIDE_W = 108
+local SIDE_C = 44
+local sideCollapsed = false
+
 local tabBar = Instance.new("ScrollingFrame", menu)
-tabBar.Name = "TabBar"
-tabBar.Size = UDim2.new(1, 0, 0, TAB_H)
+tabBar.Name = "Sidebar"
+tabBar.Size = UDim2.new(0, SIDE_W, 1, -CFG.HeaderH)
 tabBar.Position = UDim2.fromOffset(0, CFG.HeaderH)
 tabBar.BackgroundTransparency = 1
 tabBar.BorderSizePixel = 0
 tabBar.ScrollBarThickness = 0
 tabBar.CanvasSize = UDim2.new(0, 0, 0, 0)
-tabBar.AutomaticCanvasSize = Enum.AutomaticSize.X
-tabBar.ScrollingDirection = Enum.ScrollingDirection.X
+tabBar.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabBar.ScrollingDirection = Enum.ScrollingDirection.Y
 tabBar.Visible = false
 
 local tabLayout = Instance.new("UIListLayout", tabBar)
-tabLayout.FillDirection = Enum.FillDirection.Horizontal
-tabLayout.Padding = UDim.new(0, 8)
+tabLayout.Padding = UDim.new(0, 6)
 tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local tabPad = Instance.new("UIPadding", tabBar)
-tabPad.PaddingLeft = UDim.new(0, 16)
-tabPad.PaddingRight = UDim.new(0, 16)
+tabPad.PaddingTop = UDim.new(0, 8)
+tabPad.PaddingBottom = UDim.new(0, 28)
+tabPad.PaddingLeft = UDim.new(0, 8)
+tabPad.PaddingRight = UDim.new(0, 8)
+
+local collapseBtn = Instance.new("TextButton", tabBar)
+collapseBtn.Name = "Collapse"
+collapseBtn.LayoutOrder = 0
+collapseBtn.Size = UDim2.new(1, 0, 0, 26)
+collapseBtn.BackgroundColor3 = C.Surface2
+collapseBtn.AutoButtonColor = false
+collapseBtn.Text = ""
+Instance.new("UICorner", collapseBtn).CornerRadius = UDim.new(0, 8)
+for i = 0, 2 do
+    local ln = Instance.new("Frame", collapseBtn)
+    ln.AnchorPoint = Vector2.new(0.5, 0.5)
+    ln.Position = UDim2.new(0.5, 0, 0.5, (i - 1) * 5)
+    ln.Size = UDim2.fromOffset(14, 2)
+    ln.BackgroundColor3 = C.TextDim
+    ln.BorderSizePixel = 0
+    Instance.new("UICorner", ln).CornerRadius = UDim.new(1, 0)
+end
+
+local sideLine = Instance.new("Frame", menu)
+sideLine.Name = "SideLine"
+sideLine.Size = UDim2.new(0, 1, 1, -CFG.HeaderH)
+sideLine.Position = UDim2.fromOffset(SIDE_W, CFG.HeaderH)
+sideLine.BackgroundColor3 = C.Stroke
+sideLine.BorderSizePixel = 0
+sideLine.Visible = false
+
+local contentArea = Instance.new("Frame", menu)
+contentArea.Name = "Content"
+contentArea.Size = UDim2.new(1, 0, 1, -CFG.HeaderH)
+contentArea.Position = UDim2.fromOffset(0, CFG.HeaderH)
+contentArea.BackgroundTransparency = 1
+contentArea.BorderSizePixel = 0
+contentArea.ClipsDescendants = true
 
 local function makeBody()
-    local b = Instance.new("ScrollingFrame", menu)
+    local b = Instance.new("ScrollingFrame", contentArea)
     b.Name = "Body"
-    b.Size = UDim2.new(1, 0, 1, -CFG.HeaderH)
-    b.Position = UDim2.fromOffset(0, CFG.HeaderH)
+    b.Size = UDim2.fromScale(1, 1)
+    b.Position = UDim2.fromOffset(0, 0)
     b.BackgroundTransparency = 1
     b.BorderSizePixel = 0
     b.ScrollBarThickness = 6
@@ -221,8 +265,8 @@ local function makeBody()
     local pad = Instance.new("UIPadding", b)
     pad.PaddingTop = UDim.new(0, 12)
     pad.PaddingBottom = UDim.new(0, 28)
-    pad.PaddingLeft = UDim.new(0, 16)
-    pad.PaddingRight = UDim.new(0, 16)
+    pad.PaddingLeft = UDim.new(0, 14)
+    pad.PaddingRight = UDim.new(0, 14)
     return b
 end
 
@@ -446,13 +490,58 @@ local function makeTabIcon(parent, icon)
     return obj
 end
 
-local function relayout()
-    local top = CFG.HeaderH + (tabBar.Visible and TAB_H or 0)
-    for _, cat in pairs(categories) do
-        cat.body.Position = UDim2.new(cat.body.Position.X.Scale, 0, 0, top)
-        cat.body.Size = UDim2.new(1, 0, 1, -top)
+local function makeLetterIcon(parent, text)
+    local ch = "•"
+    if text and text ~= "" then
+        local ok, cp = pcall(utf8.codepoint, text, 1)
+        if ok then ch = string.upper(utf8.char(cp)) end
+    end
+    local obj = Instance.new("TextLabel", parent)
+    obj.Name = "Icon"
+    obj.LayoutOrder = 1
+    obj.Size = UDim2.new(0, 18, 1, 0)
+    obj.BackgroundTransparency = 1
+    obj.Text = ch
+    obj.Font = FontBold
+    obj.TextSize = 14
+    obj.TextColor3 = C.TextDim
+    return obj
+end
+
+local function relayout(animate)
+    local w = 0
+    if tabBar.Visible then w = sideCollapsed and SIDE_C or SIDE_W end
+    local sideSize = UDim2.new(0, w, 1, -CFG.HeaderH)
+    local contentPos = UDim2.fromOffset(w, CFG.HeaderH)
+    local contentSize = UDim2.new(1, -w, 1, -CFG.HeaderH)
+    sideLine.Visible = tabBar.Visible
+    if animate then
+        local info = TweenInfo.new(0.2, Enum.EasingStyle.Quart)
+        TweenService:Create(tabBar, info, {Size = sideSize}):Play()
+        TweenService:Create(contentArea, info, {Position = contentPos, Size = contentSize}):Play()
+        TweenService:Create(sideLine, info, {Position = contentPos}):Play()
+    else
+        tabBar.Size = sideSize
+        contentArea.Position = contentPos
+        contentArea.Size = contentSize
+        sideLine.Position = contentPos
     end
 end
+
+function API:SetSidebarCollapsed(collapsed)
+    sideCollapsed = collapsed and true or false
+    for _, cat in pairs(categories) do
+        cat.layout.HorizontalAlignment = sideCollapsed and Enum.HorizontalAlignment.Center or Enum.HorizontalAlignment.Left
+        cat.label.Visible = (cat.label.Text ~= "") and not sideCollapsed
+    end
+    relayout(true)
+end
+
+function API:ToggleSidebar()
+    API:SetSidebarCollapsed(not sideCollapsed)
+end
+
+collapseBtn.MouseButton1Click:Connect(function() API:ToggleSidebar() end)
 
 local animToken = 0
 local SLIDE_TIME = 0.25
@@ -520,38 +609,38 @@ local function createCategory(name, labelText, explicit, opts)
 
     local btn = Instance.new("TextButton", tabBar)
     btn.Name = name .. "_Tab"
-    btn.AutomaticSize = Enum.AutomaticSize.X
-    btn.Size = UDim2.fromOffset(0, 28)
+    btn.Size = UDim2.new(1, 0, 0, 34)
     btn.BackgroundColor3 = C.Surface2
     btn.AutoButtonColor = false
     btn.Text = ""
     btn.LayoutOrder = (opts and opts.order) or categoryOrder
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
     local p = Instance.new("UIPadding", btn)
-    p.PaddingLeft = UDim.new(0, 12)
-    p.PaddingRight = UDim.new(0, 12)
+    p.PaddingLeft = UDim.new(0, 8)
+    p.PaddingRight = UDim.new(0, 6)
     local tabLay = Instance.new("UIListLayout", btn)
     tabLay.FillDirection = Enum.FillDirection.Horizontal
-    tabLay.Padding = UDim.new(0, 5)
+    tabLay.Padding = UDim.new(0, 6)
     tabLay.SortOrder = Enum.SortOrder.LayoutOrder
     tabLay.VerticalAlignment = Enum.VerticalAlignment.Center
-    tabLay.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-    local cat = { body = makeBody(), button = btn }
-    cat.icon = makeTabIcon(btn, opts and opts.icon)
+    tabLay.HorizontalAlignment = sideCollapsed and Enum.HorizontalAlignment.Center or Enum.HorizontalAlignment.Left
 
     local text = (labelText == nil) and name or labelText
+    local cat = { body = makeBody(), button = btn, layout = tabLay }
+    cat.icon = makeTabIcon(btn, opts and opts.icon) or makeLetterIcon(btn, text)
+
     local labelObj = Instance.new("TextLabel", btn)
     labelObj.Name = "Label"
     labelObj.LayoutOrder = 2
-    labelObj.AutomaticSize = Enum.AutomaticSize.X
-    labelObj.Size = UDim2.new(0, 0, 1, 0)
+    labelObj.Size = UDim2.new(1, -24, 1, 0)
     labelObj.BackgroundTransparency = 1
     labelObj.Text = text
     labelObj.Font = FontBold
     labelObj.TextSize = 12
     labelObj.TextColor3 = C.TextDim
-    labelObj.Visible = (text ~= "")
+    labelObj.TextXAlignment = Enum.TextXAlignment.Left
+    labelObj.TextTruncate = Enum.TextTruncate.AtEnd
+    labelObj.Visible = (text ~= "") and not sideCollapsed
     cat.label = labelObj
     categories[name] = cat
     btn.MouseButton1Click:Connect(function() API:SelectCategory(name) end)
@@ -575,7 +664,7 @@ function API:SetCategoryIcon(name, icon)
         cat.icon:Destroy()
         cat.icon = nil
     end
-    cat.icon = makeTabIcon(cat.button, icon)
+    cat.icon = makeTabIcon(cat.button, icon) or makeLetterIcon(cat.button, cat.label.Text)
     if cat.icon then
         local fg = (selectedCat == name) and C.Bg or C.TextDim
         local prop = cat.icon:IsA("ImageLabel") and "ImageColor3" or "TextColor3"
@@ -1726,26 +1815,41 @@ function API:Open()
         menu.Position = computeMenuPos()
     end
     lastPos = menu.Position
-    menu.Visible = true
+    local basePos = lastPos
 
-    menu.Size = UDim2.fromOffset(targetSize.X.Offset, 0)
-    TweenService:Create(menu, TweenInfo.new(0.22, Enum.EasingStyle.Quart), {Size = targetSize}):Play()
+    local fromScale = 0.8
+    menuScale.Scale = fromScale
+    menu.Position = UDim2.new(
+        basePos.X.Scale, basePos.X.Offset + (1 - fromScale) * targetSize.X.Offset / 2,
+        basePos.Y.Scale, basePos.Y.Offset + (1 - fromScale) * targetSize.Y.Offset / 2
+    )
+    menu.Visible = true
+    local info = TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    TweenService:Create(menuScale, info, {Scale = 1}):Play()
+    TweenService:Create(menu, info, {Position = basePos}):Play()
 end
 
 function API:Close()
     if not isOpen then return end
     isOpen = false
     if activeSelectClose then activeSelectClose() end
-    lastPos = menu.Position
     local fullSize = lastSize or defaultMenuSize()
+    local basePos = lastPos or menu.Position
     closeToken = closeToken + 1
     local token = closeToken
-    TweenService:Create(menu, TweenInfo.new(0.18, Enum.EasingStyle.Quart), {
-        Size = UDim2.fromOffset(fullSize.X.Offset, 0)
-    }):Play()
-    task.delay(0.18, function()
+
+    local toScale = 0.85
+    local info = TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    TweenService:Create(menuScale, info, {Scale = toScale}):Play()
+    TweenService:Create(menu, info, {Position = UDim2.new(
+        basePos.X.Scale, basePos.X.Offset + (1 - toScale) * fullSize.X.Offset / 2,
+        basePos.Y.Scale, basePos.Y.Offset + (1 - toScale) * fullSize.Y.Offset / 2
+    )}):Play()
+    task.delay(0.17, function()
         if token ~= closeToken or isOpen then return end
         menu.Visible = false
+        menuScale.Scale = 1
+        menu.Position = basePos
         menu.Size = fullSize
         logo.Visible = true
     end)
@@ -2027,7 +2131,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v2.7"
+local BZ_VERSION = "v2.8"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -2198,5 +2302,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v2.7 module ready.")
+print("[BZ] Menu UI v2.8 module ready.")
 return API
