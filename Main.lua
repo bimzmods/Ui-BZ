@@ -125,6 +125,7 @@ local header = Instance.new("Frame", menu)
 header.Name = "Header"
 header.Size = UDim2.new(1, 0, 0, CFG.HeaderH)
 header.BackgroundColor3 = C.Bg
+header.BackgroundTransparency = 1
 header.BorderSizePixel = 0
 local headerLine = Instance.new("Frame", header)
 headerLine.Size = UDim2.new(1, 0, 0, 1)
@@ -148,7 +149,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.fromOffset(18, 32)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v3.1 · Studio The Clown"
+subtitle.Text = "v3.2 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -297,9 +298,7 @@ local function makeResizeHandle(name, pos, size, sx, sy, glyph)
 end
 
 local resizeHandle = makeResizeHandle("ResizeHandle", UDim2.new(1, -14, 1, -14), UDim2.fromOffset(14, 14), 1, 1, "◢")
-makeResizeHandle("ResizeHandleBL", UDim2.new(0, 0, 1, -14), UDim2.fromOffset(14, 14), -1, 1, "◣")
 local bottomEdge = makeResizeHandle("ResizeBottom", UDim2.new(0, 14, 1, -10), UDim2.new(1, -28, 0, 10), 0, 1, nil)
-makeResizeHandle("ResizeLeft", UDim2.new(0, 0, 0, CFG.HeaderH), UDim2.new(0, 6, 1, -(CFG.HeaderH + 14)), -1, 0, nil)
 
 local grabber = Instance.new("Frame", bottomEdge)
 grabber.Name = "Grabber"
@@ -310,11 +309,14 @@ grabber.BackgroundColor3 = C.TextDim
 grabber.BackgroundTransparency = 0.6
 grabber.BorderSizePixel = 0
 Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", bottomEdge).CornerRadius = UDim.new(0, 4)
 bottomEdge.MouseEnter:Connect(function()
     TweenService:Create(grabber, TweenInfo.new(0.12), {BackgroundTransparency = 0.2}):Play()
+    TweenService:Create(bottomEdge, TweenInfo.new(0.12), {BackgroundTransparency = 0.85}):Play()
 end)
 bottomEdge.MouseLeave:Connect(function()
     TweenService:Create(grabber, TweenInfo.new(0.12), {BackgroundTransparency = 0.6}):Play()
+    TweenService:Create(bottomEdge, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
 end)
 
 local registry = {}
@@ -2354,7 +2356,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v3.1"
+local BZ_VERSION = "v3.2"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -2531,5 +2533,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v3.1 module ready.")
+print("[BZ] Menu UI v3.2 module ready.")
 return API
