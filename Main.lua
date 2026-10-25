@@ -149,7 +149,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.fromOffset(18, 32)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v3.4 · Studio The Clown"
+subtitle.Text = "v3.5 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -2234,6 +2234,200 @@ API.Instances = {
     Colors = C,
 }
 
+local NOTIFY_TYPES = {
+    info    = Color3.fromRGB(165, 165, 175),
+    warn    = Color3.fromRGB(255, 204, 0),
+    error   = Color3.fromRGB(255, 69, 58),
+    success = Color3.fromRGB(48, 209, 88),
+}
+local NOTIFY_ALIASES = {
+    information = "info", warning = "warn", err = "error", fail = "error",
+    failed = "error", ok = "success", done = "success",
+}
+
+local toastHolder = Instance.new("Frame", screenGui)
+toastHolder.Name = "Toasts"
+toastHolder.AnchorPoint = Vector2.new(0.5, 0)
+toastHolder.Position = UDim2.new(0.5, 0, 0, 16)
+toastHolder.Size = UDim2.fromOffset(300, 0)
+toastHolder.AutomaticSize = Enum.AutomaticSize.Y
+toastHolder.BackgroundTransparency = 1
+toastHolder.BorderSizePixel = 0
+toastHolder.ZIndex = 100
+local toastLayout = Instance.new("UIListLayout", toastHolder)
+toastLayout.Padding = UDim.new(0, 8)
+toastLayout.SortOrder = Enum.SortOrder.LayoutOrder
+toastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local toastOrder = 0
+local toastList = {}
+
+local function notifyBar(parent, cx, cy, w, h, rot, color)
+    local f = Instance.new("Frame", parent)
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.Position = UDim2.fromOffset(cx, cy)
+    f.Size = UDim2.fromOffset(w, h)
+    f.Rotation = rot or 0
+    f.BackgroundColor3 = color
+    f.BorderSizePixel = 0
+    Instance.new("UICorner", f).CornerRadius = UDim.new(1, 0)
+    return f
+end
+
+local function makeNotifyIcon(parent, kind, color)
+    local icon = Instance.new("Frame", parent)
+    icon.Name = "Icon"
+    icon.LayoutOrder = 1
+    icon.Size = UDim2.fromOffset(26, 26)
+    icon.BackgroundTransparency = 1
+
+    if kind == "success" then
+
+        notifyBar(icon, 7, 17, 9, 3, 45, color)
+        notifyBar(icon, 16, 13.5, 18, 3, -47, color)
+    elseif kind == "error" then
+
+        notifyBar(icon, 13, 13, 20, 3, 45, color)
+        notifyBar(icon, 13, 13, 20, 3, -45, color)
+    elseif kind == "warn" then
+
+        notifyBar(icon, 7.5, 12.5, 22, 2.5, -60, color)
+        notifyBar(icon, 18.5, 12.5, 22, 2.5, 60, color)
+        notifyBar(icon, 13, 22, 22, 2.5, 0, color)
+        local bang = Instance.new("TextLabel", icon)
+        bang.AnchorPoint = Vector2.new(0.5, 0.5)
+        bang.Position = UDim2.fromOffset(13, 14.5)
+        bang.Size = UDim2.fromOffset(10, 12)
+        bang.BackgroundTransparency = 1
+        bang.Text = "!"
+        bang.Font = FontBold
+        bang.TextSize = 11
+        bang.TextColor3 = color
+    else
+
+        local ring = Instance.new("Frame", icon)
+        ring.AnchorPoint = Vector2.new(0.5, 0.5)
+        ring.Position = UDim2.fromOffset(13, 13)
+        ring.Size = UDim2.fromOffset(22, 22)
+        ring.BackgroundTransparency = 1
+        ring.BorderSizePixel = 0
+        Instance.new("UICorner", ring).CornerRadius = UDim.new(1, 0)
+        local ringStroke = Instance.new("UIStroke", ring)
+        ringStroke.Color = color
+        ringStroke.Thickness = 2
+        notifyBar(icon, 13, 8.2, 3.2, 3.2, 0, color)
+        notifyBar(icon, 13, 15.2, 3, 8, 0, color)
+    end
+    return icon
+end
+
+function API:Notify(data, kind, desc, duration)
+    if type(data) ~= "table" then
+        data = { Title = tostring(data or ""), Type = kind, Description = desc, Time = duration }
+    end
+    local kindName = string.lower(tostring(data.Type or data.type or data.Style or data.style or "info"))
+    kindName = NOTIFY_ALIASES[kindName] or kindName
+    if not NOTIFY_TYPES[kindName] then kindName = "info" end
+    local color = NOTIFY_TYPES[kindName]
+
+    local titleText = tostring(data.Title or data.title or "")
+    local descText = tostring(data.Description or data.description or data.Content or data.content or "")
+    local seconds = tonumber(data.Time or data.time or data.Duration or data.duration) or 4
+    if titleText == "" and descText == "" then return end
+
+    toastOrder = toastOrder + 1
+    while #toastList >= 5 do
+        local oldest = table.remove(toastList, 1)
+        if oldest and oldest.Parent then oldest:Destroy() end
+    end
+
+    local card = Instance.new("CanvasGroup", toastHolder)
+    card.Name = "Toast"
+    card.LayoutOrder = toastOrder
+    card.Size = UDim2.new(1, 0, 0, 0)
+    card.AutomaticSize = Enum.AutomaticSize.Y
+    card.BackgroundColor3 = Color3.fromRGB(26, 28, 30)
+    card.BorderSizePixel = 0
+    card.GroupTransparency = 1
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
+    local scale = Instance.new("UIScale", card)
+    scale.Scale = 0.92
+    table.insert(toastList, card)
+
+    local content = Instance.new("Frame", card)
+    content.Size = UDim2.new(1, -5, 0, 0)
+    content.AutomaticSize = Enum.AutomaticSize.Y
+    content.BackgroundTransparency = 1
+    content.BorderSizePixel = 0
+    local pad = Instance.new("UIPadding", content)
+    pad.PaddingTop = UDim.new(0, 10)
+    pad.PaddingBottom = UDim.new(0, 10)
+    pad.PaddingLeft = UDim.new(0, 12)
+    pad.PaddingRight = UDim.new(0, 12)
+    local rowLayout = Instance.new("UIListLayout", content)
+    rowLayout.FillDirection = Enum.FillDirection.Horizontal
+    rowLayout.Padding = UDim.new(0, 10)
+    rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    makeNotifyIcon(content, kindName, color)
+
+    local textBox = Instance.new("Frame", content)
+    textBox.LayoutOrder = 2
+    textBox.Size = UDim2.new(1, -36, 0, 0)
+    textBox.AutomaticSize = Enum.AutomaticSize.Y
+    textBox.BackgroundTransparency = 1
+    textBox.BorderSizePixel = 0
+    local textLayout = Instance.new("UIListLayout", textBox)
+    textLayout.Padding = UDim.new(0, 1)
+    textLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local function addText(text, font, size, order, transparency)
+        local l = Instance.new("TextLabel", textBox)
+        l.LayoutOrder = order
+        l.Size = UDim2.new(1, 0, 0, 0)
+        l.AutomaticSize = Enum.AutomaticSize.Y
+        l.BackgroundTransparency = 1
+        l.Text = text
+        l.Font = font
+        l.TextSize = size
+        l.TextColor3 = color
+        l.TextTransparency = transparency or 0
+        l.TextWrapped = true
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.TextYAlignment = Enum.TextYAlignment.Top
+    end
+    if titleText ~= "" then addText(titleText, FontBold, 14, 1, 0) end
+    if descText ~= "" then addText(descText, Font, 12, 2, titleText ~= "" and 0.15 or 0) end
+
+    local bar = Instance.new("Frame", card)
+    bar.Name = "Bar"
+    bar.Size = UDim2.new(0, 5, 1, 0)
+    bar.Position = UDim2.new(1, -5, 0, 0)
+    bar.BackgroundColor3 = color
+    bar.BorderSizePixel = 0
+
+    local info = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    TweenService:Create(card, TweenInfo.new(0.2), {GroupTransparency = 0}):Play()
+    TweenService:Create(scale, info, {Scale = 1}):Play()
+
+    task.delay(seconds, function()
+        if not card.Parent then return end
+        TweenService:Create(card, TweenInfo.new(0.22), {GroupTransparency = 1}):Play()
+        TweenService:Create(scale, TweenInfo.new(0.22), {Scale = 0.95}):Play()
+        task.delay(0.24, function()
+            local idx = table.find(toastList, card)
+            if idx then table.remove(toastList, idx) end
+            if card.Parent then card:Destroy() end
+        end)
+    end)
+end
+
+function API:Info(title, desc, seconds) API:Notify({ Title = title, Description = desc, Type = "info", Time = seconds }) end
+function API:Warn(title, desc, seconds) API:Notify({ Title = title, Description = desc, Type = "warn", Time = seconds }) end
+function API:Error(title, desc, seconds) API:Notify({ Title = title, Description = desc, Type = "error", Time = seconds }) end
+function API:Success(title, desc, seconds) API:Notify({ Title = title, Description = desc, Type = "success", Time = seconds }) end
+
 local imageToken = 0
 local MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
@@ -2373,7 +2567,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v3.4"
+local BZ_VERSION = "v3.5"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -2464,8 +2658,13 @@ local function buildUICategory()
         if cfgStatus then
             cfgStatus:SetText(ok and "✔ Config tersimpan" or ("✘ " .. tostring(err)))
         end
+        if ok then
+            API:Success("Config tersimpan", CFG.ConfigFile, 3)
+        else
+            API:Error("Gagal menyimpan config", tostring(err), 4)
+        end
     end)
-    cfgStatus = API:AddNote("Save Config.")
+    cfgStatus = API:AddNote("Save Config menyimpan semua toggle, slider, dan pilihan ke folder \"BZ Menu\" sesuai Game ID (BZ_GameID_Config.json). Otomatis dimuat saat script dijalankan.")
 
     currentCat = prev
 end
@@ -2498,8 +2697,10 @@ local function buildDevTools()
         if not status then return end
         if ok then
             status:SetText("✔ Tersalin: " .. what)
+            API:Success("Tersalin", what, 2)
         else
             status:SetText("✘ Executor tidak support clipboard")
+            API:Error("Gagal menyalin", "Executor tidak support clipboard", 3)
         end
     end
 
@@ -2550,5 +2751,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v3.4 module ready.")
+print("[BZ] Menu UI v3.5 module ready.")
 return API
