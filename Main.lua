@@ -149,7 +149,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.fromOffset(18, 32)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v3.5 · Studio The Clown"
+subtitle.Text = "v3.6 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -2411,8 +2411,23 @@ function API:Notify(data, kind, desc, duration)
     TweenService:Create(card, TweenInfo.new(0.2), {GroupTransparency = 0}):Play()
     TweenService:Create(scale, info, {Scale = 1}):Play()
 
-    task.delay(seconds, function()
-        if not card.Parent then return end
+    local track = Instance.new("Frame", card)
+    track.Name = "ProgressTrack"
+    track.Size = UDim2.new(1, -5, 0, 3)
+    track.Position = UDim2.new(0, 0, 1, -3)
+    track.BackgroundColor3 = color
+    track.BackgroundTransparency = 0.85
+    track.BorderSizePixel = 0
+    local fill = Instance.new("Frame", track)
+    fill.Name = "ProgressFill"
+    fill.Size = UDim2.fromScale(0, 1)
+    fill.BackgroundColor3 = color
+    fill.BorderSizePixel = 0
+
+    local dismissed = false
+    local function dismiss()
+        if dismissed or not card.Parent then return end
+        dismissed = true
         TweenService:Create(card, TweenInfo.new(0.22), {GroupTransparency = 1}):Play()
         TweenService:Create(scale, TweenInfo.new(0.22), {Scale = 0.95}):Play()
         task.delay(0.24, function()
@@ -2420,7 +2435,13 @@ function API:Notify(data, kind, desc, duration)
             if idx then table.remove(toastList, idx) end
             if card.Parent then card:Destroy() end
         end)
-    end)
+    end
+
+    local progress = TweenService:Create(fill, TweenInfo.new(seconds, Enum.EasingStyle.Linear), {
+        Size = UDim2.fromScale(1, 1)
+    })
+    progress.Completed:Connect(dismiss)
+    progress:Play()
 end
 
 function API:Info(title, desc, seconds) API:Notify({ Title = title, Description = desc, Type = "info", Time = seconds }) end
@@ -2567,7 +2588,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v3.5"
+local BZ_VERSION = "v3.6"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -2751,5 +2772,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v3.5 module ready.")
+print("[BZ] Menu UI v3.6 module ready.")
 return API
