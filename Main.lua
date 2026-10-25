@@ -149,7 +149,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.fromOffset(18, 32)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v3.2 · Studio The Clown"
+subtitle.Text = "v3.4 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -266,58 +266,75 @@ end
 
 local resizeHandles = {}
 
-local function makeResizeHandle(name, pos, size, sx, sy, glyph)
-    local h = Instance.new("Frame", menu)
-    h.Name = name
-    h.Position = pos
-    h.Size = size
-    h.BackgroundColor3 = C.Accent
-    h.BackgroundTransparency = 1
-    h.BorderSizePixel = 0
-    h.Active = true
-    h.ZIndex = 5
-    if glyph then
-        Instance.new("UICorner", h).CornerRadius = UDim.new(0, 4)
-        local icon = Instance.new("TextLabel", h)
-        icon.Size = UDim2.fromScale(1, 1)
-        icon.BackgroundTransparency = 1
-        icon.Text = glyph
-        icon.Font = FontBold
-        icon.TextSize = 11
-        icon.TextColor3 = C.TextDim
-        icon.ZIndex = 6
-        h.MouseEnter:Connect(function()
-            TweenService:Create(h, TweenInfo.new(0.12), {BackgroundTransparency = 0.85}):Play()
-        end)
-        h.MouseLeave:Connect(function()
-            TweenService:Create(h, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
-        end)
-    end
-    resizeHandles[#resizeHandles + 1] = { frame = h, sx = sx, sy = sy }
-    return h
+local function addResizeHandle(frame, sx, sy)
+    resizeHandles[#resizeHandles + 1] = { frame = frame, sx = sx, sy = sy }
 end
 
-local resizeHandle = makeResizeHandle("ResizeHandle", UDim2.new(1, -14, 1, -14), UDim2.fromOffset(14, 14), 1, 1, "◢")
-local bottomEdge = makeResizeHandle("ResizeBottom", UDim2.new(0, 14, 1, -10), UDim2.new(1, -28, 0, 10), 0, 1, nil)
+local resizeHandle = Instance.new("Frame", menu)
+resizeHandle.Name = "ResizeHandle"
+resizeHandle.Position = UDim2.new(1, -28, 1, -28)
+resizeHandle.Size = UDim2.fromOffset(28, 28)
+resizeHandle.BackgroundTransparency = 1
+resizeHandle.BorderSizePixel = 0
+resizeHandle.Active = true
+resizeHandle.ZIndex = 5
+
+local arcClip = Instance.new("Frame", resizeHandle)
+arcClip.Name = "ArcClip"
+arcClip.Position = UDim2.new(1, -18, 1, -18)
+arcClip.Size = UDim2.fromOffset(18, 18)
+arcClip.BackgroundTransparency = 1
+arcClip.BorderSizePixel = 0
+arcClip.ClipsDescendants = true
+arcClip.ZIndex = 6
+
+local arc = Instance.new("Frame", arcClip)
+arc.Name = "Arc"
+arc.Position = UDim2.fromOffset(-21, -21)
+arc.Size = UDim2.fromOffset(34, 34)
+arc.BackgroundTransparency = 1
+arc.BorderSizePixel = 0
+arc.ZIndex = 6
+Instance.new("UICorner", arc).CornerRadius = UDim.new(1, 0)
+local arcStroke = Instance.new("UIStroke", arc)
+arcStroke.Color = C.TextDim
+arcStroke.Thickness = 2.5
+arcStroke.Transparency = 0.2
+
+resizeHandle.MouseEnter:Connect(function()
+    TweenService:Create(arcStroke, TweenInfo.new(0.12), {Color = C.Text, Transparency = 0}):Play()
+end)
+resizeHandle.MouseLeave:Connect(function()
+    TweenService:Create(arcStroke, TweenInfo.new(0.12), {Color = C.TextDim, Transparency = 0.2}):Play()
+end)
+addResizeHandle(resizeHandle, 1, 1)
+
+local bottomEdge = Instance.new("Frame", menu)
+bottomEdge.Name = "ResizeBottom"
+bottomEdge.Position = UDim2.new(0, 22, 1, -14)
+bottomEdge.Size = UDim2.new(1, -50, 0, 14)
+bottomEdge.BackgroundTransparency = 1
+bottomEdge.BorderSizePixel = 0
+bottomEdge.Active = true
+bottomEdge.ZIndex = 5
 
 local grabber = Instance.new("Frame", bottomEdge)
 grabber.Name = "Grabber"
 grabber.AnchorPoint = Vector2.new(0.5, 0.5)
 grabber.Position = UDim2.fromScale(0.5, 0.5)
-grabber.Size = UDim2.fromOffset(36, 4)
-grabber.BackgroundColor3 = C.TextDim
-grabber.BackgroundTransparency = 0.6
+grabber.Size = UDim2.fromOffset(96, 5)
+grabber.BackgroundColor3 = C.Text
+grabber.BackgroundTransparency = 0.45
 grabber.BorderSizePixel = 0
+grabber.ZIndex = 6
 Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
-Instance.new("UICorner", bottomEdge).CornerRadius = UDim.new(0, 4)
 bottomEdge.MouseEnter:Connect(function()
-    TweenService:Create(grabber, TweenInfo.new(0.12), {BackgroundTransparency = 0.2}):Play()
-    TweenService:Create(bottomEdge, TweenInfo.new(0.12), {BackgroundTransparency = 0.85}):Play()
+    TweenService:Create(grabber, TweenInfo.new(0.12), {BackgroundTransparency = 0.15}):Play()
 end)
 bottomEdge.MouseLeave:Connect(function()
-    TweenService:Create(grabber, TweenInfo.new(0.12), {BackgroundTransparency = 0.6}):Play()
-    TweenService:Create(bottomEdge, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(grabber, TweenInfo.new(0.12), {BackgroundTransparency = 0.45}):Play()
 end)
+addResizeHandle(bottomEdge, 0, 1)
 
 local registry = {}
 local layoutCounter = 0
@@ -611,13 +628,13 @@ function API:SelectCategory(name)
     end
 
     if not target.body.Visible then
-        target.body.Position = UDim2.new(dir, 0, 0, y)
+        target.body.Position = UDim2.new(0, 0, dir, y)
         target.body.Visible = true
     end
 
     local info = TweenInfo.new(SLIDE_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     TweenService:Create(target.body, info, {Position = UDim2.new(0, 0, 0, y)}):Play()
-    TweenService:Create(prev.body, info, {Position = UDim2.new(-dir, 0, 0, y)}):Play()
+    TweenService:Create(prev.body, info, {Position = UDim2.new(0, 0, -dir, y)}):Play()
 
     task.delay(SLIDE_TIME + 0.02, function()
         if token ~= animToken then return end
@@ -2356,7 +2373,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v3.2"
+local BZ_VERSION = "v3.4"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -2448,7 +2465,7 @@ local function buildUICategory()
             cfgStatus:SetText(ok and "✔ Config tersimpan" or ("✘ " .. tostring(err)))
         end
     end)
-    cfgStatus = API:AddNote("Save Config menyimpan semua toggle, slider, dan pilihan ke folder \"BZ Menu\" sesuai Game ID (BZ_GameID_Config.json). Otomatis dimuat saat script dijalankan.")
+    cfgStatus = API:AddNote("Save Config.")
 
     currentCat = prev
 end
@@ -2533,5 +2550,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v3.2 module ready.")
+print("[BZ] Menu UI v3.4 module ready.")
 return API
