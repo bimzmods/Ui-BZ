@@ -12,6 +12,10 @@ local old = CoreGui:FindFirstChild(guiName)
 if old then old:Destroy() end
 old = player:WaitForChild("PlayerGui"):FindFirstChild(guiName)
 if old then old:Destroy() end
+for _, parent in ipairs({ CoreGui, player:WaitForChild("PlayerGui") }) do
+    local oldPicker = parent:FindFirstChild(guiName .. "_Picker")
+    if oldPicker then oldPicker:Destroy() end
+end
 
 local CFG = {
     Colors = {
@@ -150,7 +154,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.fromOffset(18, 32)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v3.8 · Studio The Clown"
+subtitle.Text = "v3.9 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -1769,6 +1773,20 @@ local function noTheme(inst)
     return inst
 end
 
+local pickerGui = nil
+local function getPickerGui()
+    if pickerGui and pickerGui.Parent then return pickerGui end
+    pickerGui = Instance.new("ScreenGui")
+    pickerGui.Name = guiName .. "_Picker"
+    pickerGui.ResetOnSpawn = false
+    pickerGui.IgnoreGuiInset = false
+    pickerGui.DisplayOrder = screenGui.DisplayOrder + 1
+    pickerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    local okp = pcall(function() pickerGui.Parent = screenGui.Parent end)
+    if not okp or not pickerGui.Parent then pickerGui.Parent = player:WaitForChild("PlayerGui") end
+    return pickerGui
+end
+
 function API:AddColorPicker(name, labelText, default, callback)
     local row = Instance.new("Frame", currentBody())
     row.Name = name .. "_Row"
@@ -1856,17 +1874,17 @@ function API:AddColorPicker(name, labelText, default, callback)
         activeSelectClose = closePicker
 
         local W, H = 236, 302
-        local cam = workspace.CurrentCamera
-        local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
-        local px = swatch.AbsolutePosition.X + swatch.AbsoluteSize.X - W
-        px = math.clamp(px, 4, math.max(vp.X - W - 4, 4))
-        local py = swatch.AbsolutePosition.Y + swatch.AbsoluteSize.Y + 6
-        if py + H > vp.Y - 4 then
-            py = swatch.AbsolutePosition.Y - H - 6
-        end
-        py = math.max(py, 4)
+        local pg = getPickerGui()
 
-        blocker = Instance.new("TextButton", screenGui)
+        local inset = math.max(screenGui.AbsoluteSize.Y - pg.AbsoluteSize.Y, 0)
+        local vp = pg.AbsoluteSize
+
+        local px = menu.AbsolutePosition.X + menu.AbsoluteSize.X + 10
+        local py = menu.AbsolutePosition.Y - inset
+        px = math.clamp(px, 4, math.max(vp.X - W - 4, 4))
+        py = math.clamp(py, 4, math.max(vp.Y - H - 4, 4))
+
+        blocker = Instance.new("TextButton", pg)
         blocker.Name = "ColorBlocker"
         blocker.Size = UDim2.fromScale(1, 1)
         blocker.BackgroundTransparency = 1
@@ -1875,7 +1893,7 @@ function API:AddColorPicker(name, labelText, default, callback)
         blocker.ZIndex = 49
         blocker.MouseButton1Click:Connect(closePicker)
 
-        popup = Instance.new("Frame", screenGui)
+        popup = Instance.new("Frame", pg)
         popup.Name = "ColorPopup"
         popup.ZIndex = 50
         popup.Position = UDim2.fromOffset(px, py)
@@ -2041,7 +2059,7 @@ function API:AddColorPicker(name, labelText, default, callback)
         end
 
         local function fieldDrag(x, y)
-            local yy = y + GuiService:GetGuiInset().Y
+            local yy = y
             local fx = math.clamp((x - field.AbsolutePosition.X) / math.max(field.AbsoluteSize.X, 1), 0, 1)
             local fy = math.clamp((yy - field.AbsolutePosition.Y) / math.max(field.AbsoluteSize.Y, 1), 0, 1)
             s, v = fx, 1 - fy
@@ -2586,6 +2604,7 @@ logo.MouseLeave:Connect(function()
 end)
 
 function API:Destroy()
+    if pickerGui then pickerGui:Destroy() end
     if screenGui then screenGui:Destroy() end
 end
 
@@ -3066,7 +3085,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v3.8"
+local BZ_VERSION = "v3.9"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -3256,5 +3275,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v3.8 module ready.")
+print("[BZ] Menu UI v3.9 module ready.")
 return API
