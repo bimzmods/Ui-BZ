@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService")
 local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
@@ -149,7 +150,7 @@ local subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -60, 0, 14)
 subtitle.Position = UDim2.fromOffset(18, 32)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v3.7 · Studio The Clown"
+subtitle.Text = "v3.8 · Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -363,6 +364,7 @@ local function applyPending(name)
         or (e.kind == "select" and "string")
         or (e.kind == "multiselect" and "table")
         or (e.kind == "keybind" and "string")
+        or (e.kind == "color" and "string")
     if want and type(v) == want then e.set(v) end
 end
 local activeSlider = nil
@@ -1743,6 +1745,370 @@ function API:SetMenuKey(key)
     API:SetKeyBind("ui_menu_key", key)
 end
 
+local COLOR_PRESETS = {
+    {40, 70, 86}, {42, 157, 143}, {233, 196, 106}, {244, 162, 97}, {231, 111, 81}, {214, 40, 40},
+    {0, 48, 135}, {0, 119, 182}, {0, 150, 199}, {0, 180, 216}, {72, 202, 228},
+}
+
+local function colorToHex(c)
+    return string.format("%02X%02X%02X",
+        math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5))
+end
+
+local function hexToColor(text)
+    local h = tostring(text or ""):gsub("^%s*#", ""):gsub("%s", "")
+    if #h == 3 then
+        h = h:sub(1, 1):rep(2) .. h:sub(2, 2):rep(2) .. h:sub(3, 3):rep(2)
+    end
+    if not h:match("^%x%x%x%x%x%x$") then return nil end
+    return Color3.fromRGB(tonumber(h:sub(1, 2), 16), tonumber(h:sub(3, 4), 16), tonumber(h:sub(5, 6), 16))
+end
+
+local function noTheme(inst)
+    inst:SetAttribute("NoTheme", true)
+    return inst
+end
+
+function API:AddColorPicker(name, labelText, default, callback)
+    local row = Instance.new("Frame", currentBody())
+    row.Name = name .. "_Row"
+    row.Size = UDim2.new(1, 0, 0, 46)
+    row.BackgroundColor3 = C.Surface
+    row.BorderSizePixel = 0
+    row.LayoutOrder = nextOrder()
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
+    local rs = Instance.new("UIStroke", row)
+    rs.Color = C.Stroke
+    rs.Thickness = 1
+    rs.Transparency = 0.6
+
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(1, -70, 1, 0)
+    lbl.Position = UDim2.fromOffset(14, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText or name
+    lbl.Font = Font
+    lbl.TextSize = 14
+    lbl.TextColor3 = C.Text
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextTruncate = Enum.TextTruncate.AtEnd
+
+    local color = (typeof(default) == "Color3") and default or Color3.fromRGB(255, 255, 255)
+    local h, s, v = color:ToHSV()
+
+    local swatch = noTheme(Instance.new("TextButton", row))
+    swatch.AnchorPoint = Vector2.new(1, 0.5)
+    swatch.Position = UDim2.new(1, -14, 0.5, 0)
+    swatch.Size = UDim2.fromOffset(30, 30)
+    swatch.BackgroundColor3 = color
+    swatch.BorderSizePixel = 0
+    swatch.AutoButtonColor = false
+    swatch.Text = ""
+    Instance.new("UICorner", swatch).CornerRadius = UDim.new(1, 0)
+    local ss = Instance.new("UIStroke", swatch)
+    ss.Color = C.Stroke
+    ss.Thickness = 2
+
+    local ui = nil
+
+    local function applyColor(silent)
+        color = Color3.fromHSV(h, s, v)
+        swatch.BackgroundColor3 = color
+        if ui then
+            ui.base.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+            ui.marker.Position = UDim2.fromScale(s, 1 - v)
+            ui.thumb.Position = UDim2.new(h, 0, 0.5, 0)
+            ui.thumbFill.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+            ui.preview.BackgroundColor3 = color
+            if not ui.hex:IsFocused() then ui.hex.Text = "#" .. colorToHex(color) end
+        end
+        if not silent and callback then pcall(callback, color) end
+    end
+
+    local function setFromColor(c, silent)
+        local nh, ns, nv = c:ToHSV()
+        if ns > 0.001 and nv > 0.001 then h = nh end
+        s, v = ns, nv
+        applyColor(silent)
+    end
+
+    local isOpen, popup, blocker = false, nil, nil
+
+    local function closePicker()
+        if not isOpen then return end
+        isOpen = false
+        if activeSelectClose == closePicker then activeSelectClose = nil end
+        ui = nil
+        local pg, bl = popup, blocker
+        popup, blocker = nil, nil
+        if bl then bl:Destroy() end
+        if pg then
+            TweenService:Create(pg, TweenInfo.new(0.12, Enum.EasingStyle.Quart), {
+                Size = UDim2.fromOffset(pg.Size.X.Offset, 0)
+            }):Play()
+            task.delay(0.14, function() pg:Destroy() end)
+        end
+    end
+
+    local function openPicker()
+        if activeSelectClose then activeSelectClose() end
+        isOpen = true
+        activeSelectClose = closePicker
+
+        local W, H = 236, 302
+        local cam = workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+        local px = swatch.AbsolutePosition.X + swatch.AbsoluteSize.X - W
+        px = math.clamp(px, 4, math.max(vp.X - W - 4, 4))
+        local py = swatch.AbsolutePosition.Y + swatch.AbsoluteSize.Y + 6
+        if py + H > vp.Y - 4 then
+            py = swatch.AbsolutePosition.Y - H - 6
+        end
+        py = math.max(py, 4)
+
+        blocker = Instance.new("TextButton", screenGui)
+        blocker.Name = "ColorBlocker"
+        blocker.Size = UDim2.fromScale(1, 1)
+        blocker.BackgroundTransparency = 1
+        blocker.AutoButtonColor = false
+        blocker.Text = ""
+        blocker.ZIndex = 49
+        blocker.MouseButton1Click:Connect(closePicker)
+
+        popup = Instance.new("Frame", screenGui)
+        popup.Name = "ColorPopup"
+        popup.ZIndex = 50
+        popup.Position = UDim2.fromOffset(px, py)
+        popup.Size = UDim2.fromOffset(W, 0)
+        popup.BackgroundColor3 = C.Surface
+        popup.BorderSizePixel = 0
+        popup.ClipsDescendants = true
+        Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 16)
+        local ps = Instance.new("UIStroke", popup)
+        ps.Color = C.Stroke
+        ps.Thickness = 1
+
+        local inner = W - 24
+
+        local field = noTheme(Instance.new("Frame", popup))
+        field.Position = UDim2.fromOffset(12, 12)
+        field.Size = UDim2.fromOffset(inner, 120)
+        field.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+        field.BorderSizePixel = 0
+        Instance.new("UICorner", field).CornerRadius = UDim.new(0, 10)
+
+        local white = noTheme(Instance.new("Frame", field))
+        white.Size = UDim2.fromScale(1, 1)
+        white.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        white.BorderSizePixel = 0
+        Instance.new("UICorner", white).CornerRadius = UDim.new(0, 10)
+        local wg = Instance.new("UIGradient", white)
+        wg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
+
+        local black = noTheme(Instance.new("Frame", field))
+        black.Size = UDim2.fromScale(1, 1)
+        black.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        black.BorderSizePixel = 0
+        Instance.new("UICorner", black).CornerRadius = UDim.new(0, 10)
+        local bg = Instance.new("UIGradient", black)
+        bg.Rotation = 90
+        bg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) })
+
+        local marker = Instance.new("Frame", field)
+        marker.AnchorPoint = Vector2.new(0.5, 0.5)
+        marker.Size = UDim2.fromOffset(16, 16)
+        marker.Position = UDim2.fromScale(s, 1 - v)
+        marker.BackgroundTransparency = 1
+        marker.BorderSizePixel = 0
+        marker.ZIndex = 3
+        Instance.new("UICorner", marker).CornerRadius = UDim.new(1, 0)
+        local ms = Instance.new("UIStroke", marker)
+        ms.Color = Color3.fromRGB(255, 255, 255)
+        ms.Thickness = 2
+
+        local fieldHit = Instance.new("TextButton", field)
+        fieldHit.Size = UDim2.fromScale(1, 1)
+        fieldHit.BackgroundTransparency = 1
+        fieldHit.Text = ""
+        fieldHit.AutoButtonColor = false
+        fieldHit.ZIndex = 4
+
+        local track = noTheme(Instance.new("Frame", popup))
+        track.Position = UDim2.fromOffset(12, 146)
+        track.Size = UDim2.fromOffset(inner, 12)
+        track.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        track.BorderSizePixel = 0
+        Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+        local hg = Instance.new("UIGradient", track)
+        hg.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+            ColorSequenceKeypoint.new(1 / 6, Color3.fromRGB(255, 255, 0)),
+            ColorSequenceKeypoint.new(2 / 6, Color3.fromRGB(0, 255, 0)),
+            ColorSequenceKeypoint.new(3 / 6, Color3.fromRGB(0, 255, 255)),
+            ColorSequenceKeypoint.new(4 / 6, Color3.fromRGB(0, 0, 255)),
+            ColorSequenceKeypoint.new(5 / 6, Color3.fromRGB(255, 0, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
+        })
+
+        local thumb = Instance.new("Frame", track)
+        thumb.AnchorPoint = Vector2.new(0.5, 0.5)
+        thumb.Size = UDim2.fromOffset(20, 20)
+        thumb.Position = UDim2.new(h, 0, 0.5, 0)
+        thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        thumb.BorderSizePixel = 0
+        thumb.ZIndex = 3
+        noTheme(thumb)
+        Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
+        local thumbFill = noTheme(Instance.new("Frame", thumb))
+        thumbFill.AnchorPoint = Vector2.new(0.5, 0.5)
+        thumbFill.Position = UDim2.fromScale(0.5, 0.5)
+        thumbFill.Size = UDim2.fromOffset(14, 14)
+        thumbFill.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+        thumbFill.BorderSizePixel = 0
+        thumbFill.ZIndex = 4
+        Instance.new("UICorner", thumbFill).CornerRadius = UDim.new(1, 0)
+
+        local hueHit = Instance.new("TextButton", popup)
+        hueHit.Position = UDim2.fromOffset(12, 138)
+        hueHit.Size = UDim2.fromOffset(inner, 28)
+        hueHit.BackgroundTransparency = 1
+        hueHit.Text = ""
+        hueHit.AutoButtonColor = false
+        hueHit.ZIndex = 4
+
+        local preview = noTheme(Instance.new("Frame", popup))
+        preview.Position = UDim2.fromOffset(12, 178)
+        preview.Size = UDim2.fromOffset(32, 32)
+        preview.BackgroundColor3 = color
+        preview.BorderSizePixel = 0
+        Instance.new("UICorner", preview).CornerRadius = UDim.new(1, 0)
+        local pvs = Instance.new("UIStroke", preview)
+        pvs.Color = C.Stroke
+        pvs.Thickness = 1
+
+        local hex = Instance.new("TextBox", popup)
+        hex.Position = UDim2.fromOffset(54, 178)
+        hex.Size = UDim2.fromOffset(W - 66, 32)
+        hex.BackgroundColor3 = C.Surface2
+        hex.BorderSizePixel = 0
+        hex.ClearTextOnFocus = false
+        hex.PlaceholderText = "#RRGGBB"
+        hex.Text = "#" .. colorToHex(color)
+        hex.Font = FontBold
+        hex.TextSize = 14
+        hex.TextColor3 = C.Text
+        hex.TextXAlignment = Enum.TextXAlignment.Left
+        Instance.new("UICorner", hex).CornerRadius = UDim.new(1, 0)
+        local hexPad = Instance.new("UIPadding", hex)
+        hexPad.PaddingLeft = UDim.new(0, 14)
+        hexPad.PaddingRight = UDim.new(0, 10)
+        local hexStroke = Instance.new("UIStroke", hex)
+        hexStroke.Color = C.Stroke
+        hexStroke.Thickness = 1
+
+        hex.FocusLost:Connect(function()
+            local c = hexToColor(hex.Text)
+            if c then
+                setFromColor(c)
+            else
+                hex.Text = "#" .. colorToHex(color)
+            end
+        end)
+
+        local gap = (inner - 6 * 26) / 5
+        for i, rgb in ipairs(COLOR_PRESETS) do
+            local rowIndex = (i <= 6) and 0 or 1
+            local col = (i <= 6) and (i - 1) or (i - 7)
+            local startX = 12
+            if rowIndex == 1 then
+                startX = 12 + (inner - (5 * 26 + 4 * gap)) / 2
+            end
+            local dot = noTheme(Instance.new("TextButton", popup))
+            dot.Position = UDim2.fromOffset(startX + col * (26 + gap), 226 + rowIndex * 36)
+            dot.Size = UDim2.fromOffset(26, 26)
+            dot.BackgroundColor3 = Color3.fromRGB(rgb[1], rgb[2], rgb[3])
+            dot.BorderSizePixel = 0
+            dot.AutoButtonColor = false
+            dot.Text = ""
+            Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+            local dst = Instance.new("UIStroke", dot)
+            dst.Color = C.Stroke
+            dst.Thickness = 1
+            dst.Transparency = 0.5
+            dot.MouseButton1Click:Connect(function()
+                setFromColor(Color3.fromRGB(rgb[1], rgb[2], rgb[3]))
+            end)
+        end
+
+        local function fieldDrag(x, y)
+            local yy = y + GuiService:GetGuiInset().Y
+            local fx = math.clamp((x - field.AbsolutePosition.X) / math.max(field.AbsoluteSize.X, 1), 0, 1)
+            local fy = math.clamp((yy - field.AbsolutePosition.Y) / math.max(field.AbsoluteSize.Y, 1), 0, 1)
+            s, v = fx, 1 - fy
+            applyColor()
+        end
+        local function hueDrag(x)
+            h = math.clamp((x - track.AbsolutePosition.X) / math.max(track.AbsoluteSize.X, 1), 0, 1)
+            applyColor()
+        end
+
+        fieldHit.InputBegan:Connect(function(input)
+            if activeSlider then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+                activeSlider = fieldDrag
+                activeInput = input
+                activeBody = nil
+                fieldDrag(input.Position.X, input.Position.Y)
+            end
+        end)
+        hueHit.InputBegan:Connect(function(input)
+            if activeSlider then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+                activeSlider = hueDrag
+                activeInput = input
+                activeBody = nil
+                hueDrag(input.Position.X)
+            end
+        end)
+
+        ui = { base = field, marker = marker, thumb = thumb, thumbFill = thumbFill, preview = preview, hex = hex }
+
+        TweenService:Create(popup, TweenInfo.new(0.18, Enum.EasingStyle.Quart), {
+            Size = UDim2.fromOffset(W, H)
+        }):Play()
+    end
+
+    swatch.MouseButton1Click:Connect(function()
+        if isOpen then closePicker() else openPicker() end
+    end)
+
+    registry[name] = {
+        kind = "color",
+        set = function(value, silent)
+            local c = (typeof(value) == "Color3") and value or hexToColor(value)
+            if c then setFromColor(c, silent) end
+        end,
+        get = function() return colorToHex(color) end,
+        getColor = function() return color end,
+        row = row,
+    }
+    applyPending(name)
+    return registry[name]
+end
+
+function API:GetColor(name)
+    local e = registry[name]
+    if e and e.kind == "color" then return e.getColor() end
+    return nil
+end
+
+function API:SetColor(name, value, silent)
+    local e = registry[name]
+    if e and e.kind == "color" then e.set(value, silent) end
+end
+
 function API:SetTheme(themeName)
     local newT = THEMES[themeName]
     if not newT then return false end
@@ -1758,7 +2124,7 @@ function API:SetTheme(themeName)
     end
 
     for _, inst in ipairs(screenGui:GetDescendants()) do
-        if inst:IsA("GuiObject") then
+        if inst:IsA("GuiObject") and not inst:GetAttribute("NoTheme") then
             inst.BackgroundColor3 = map(inst.BackgroundColor3)
         end
         if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
@@ -1790,7 +2156,7 @@ function API:SaveConfig()
     end
     local items = {}
     for name, e in pairs(registry) do
-        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" or e.kind == "multiselect" or e.kind == "keybind" then
+        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" or e.kind == "multiselect" or e.kind == "keybind" or e.kind == "color" then
             items[name] = e.get()
         end
     end
@@ -2138,7 +2504,7 @@ UserInputService.InputChanged:Connect(function(input)
             local mouseMove = activeInput.UserInputType == Enum.UserInputType.MouseButton1
                 and input.UserInputType == Enum.UserInputType.MouseMovement
             if sameTouch or mouseMove then
-                activeSlider(input.Position.X)
+                activeSlider(input.Position.X, input.Position.Y)
             end
         end
         if dragLogo and logoStart then
@@ -2412,42 +2778,56 @@ function API:Notify(data, kind, desc, duration)
     card.Name = "Toast"
     card.Size = UDim2.new(1, 0, 0, 0)
     card.AutomaticSize = Enum.AutomaticSize.Y
-    card.BackgroundColor3 = Color3.fromRGB(26, 28, 30)
+    card.BackgroundColor3 = C.Surface
     card.BorderSizePixel = 0
     card.GroupTransparency = 1
-    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 16)
+    local cardStroke = Instance.new("UIStroke", card)
+    cardStroke.Color = C.Stroke
+    cardStroke.Thickness = 1
+    cardStroke.Transparency = 0.4
     local scale = Instance.new("UIScale", card)
     scale.Scale = 0.9
 
     local content = Instance.new("Frame", card)
-    content.Size = UDim2.new(1, -5, 0, 0)
+    content.Size = UDim2.new(1, 0, 0, 0)
     content.AutomaticSize = Enum.AutomaticSize.Y
     content.BackgroundTransparency = 1
     content.BorderSizePixel = 0
     local pad = Instance.new("UIPadding", content)
-    pad.PaddingTop = UDim.new(0, 10)
-    pad.PaddingBottom = UDim.new(0, 10)
-    pad.PaddingLeft = UDim.new(0, 12)
-    pad.PaddingRight = UDim.new(0, 12)
+    pad.PaddingTop = UDim.new(0, 14)
+    pad.PaddingBottom = UDim.new(0, 20)
+    pad.PaddingLeft = UDim.new(0, 14)
+    pad.PaddingRight = UDim.new(0, 14)
     local rowLayout = Instance.new("UIListLayout", content)
     rowLayout.FillDirection = Enum.FillDirection.Horizontal
-    rowLayout.Padding = UDim.new(0, 10)
+    rowLayout.Padding = UDim.new(0, 12)
     rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
     rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 
-    makeNotifyIcon(content, kindName, color)
+    local badge = Instance.new("Frame", content)
+    badge.Name = "Badge"
+    badge.LayoutOrder = 1
+    badge.Size = UDim2.fromOffset(38, 38)
+    badge.BackgroundColor3 = color
+    badge.BackgroundTransparency = 0.84
+    badge.BorderSizePixel = 0
+    Instance.new("UICorner", badge).CornerRadius = UDim.new(1, 0)
+    local icon = makeNotifyIcon(badge, kindName, color)
+    icon.AnchorPoint = Vector2.new(0.5, 0.5)
+    icon.Position = UDim2.fromScale(0.5, 0.5)
 
     local textBox = Instance.new("Frame", content)
     textBox.LayoutOrder = 2
-    textBox.Size = UDim2.new(1, -36, 0, 0)
+    textBox.Size = UDim2.new(1, -50, 0, 0)
     textBox.AutomaticSize = Enum.AutomaticSize.Y
     textBox.BackgroundTransparency = 1
     textBox.BorderSizePixel = 0
     local textLayout = Instance.new("UIListLayout", textBox)
-    textLayout.Padding = UDim.new(0, 1)
+    textLayout.Padding = UDim.new(0, 2)
     textLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-    local function addText(text, font, size, order, transparency)
+    local function addText(text, font, size, order, textColor)
         local l = Instance.new("TextLabel", textBox)
         l.LayoutOrder = order
         l.Size = UDim2.new(1, 0, 0, 0)
@@ -2456,34 +2836,28 @@ function API:Notify(data, kind, desc, duration)
         l.Text = text
         l.Font = font
         l.TextSize = size
-        l.TextColor3 = color
-        l.TextTransparency = transparency or 0
+        l.TextColor3 = textColor
         l.TextWrapped = true
         l.TextXAlignment = Enum.TextXAlignment.Left
         l.TextYAlignment = Enum.TextYAlignment.Top
     end
-    if titleText ~= "" then addText(titleText, FontBold, 14, 1, 0) end
-    if descText ~= "" then addText(descText, Font, 12, 2, titleText ~= "" and 0.15 or 0) end
-
-    local bar = Instance.new("Frame", card)
-    bar.Name = "Bar"
-    bar.Size = UDim2.new(0, 5, 1, 0)
-    bar.Position = UDim2.new(1, -5, 0, 0)
-    bar.BackgroundColor3 = color
-    bar.BorderSizePixel = 0
+    if titleText ~= "" then addText(titleText, FontBold, 14, 1, C.Text) end
+    if descText ~= "" then addText(descText, Font, 12, 2, titleText ~= "" and C.TextDim or C.Text) end
 
     local track = Instance.new("Frame", card)
     track.Name = "ProgressTrack"
-    track.Size = UDim2.new(1, -5, 0, 3)
-    track.Position = UDim2.new(0, 0, 1, -3)
+    track.Size = UDim2.new(1, -28, 0, 3)
+    track.Position = UDim2.new(0, 14, 1, -10)
     track.BackgroundColor3 = color
     track.BackgroundTransparency = 0.85
     track.BorderSizePixel = 0
+    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
     local fill = Instance.new("Frame", track)
     fill.Name = "ProgressFill"
     fill.Size = UDim2.fromScale(0, 1)
     fill.BackgroundColor3 = color
     fill.BorderSizePixel = 0
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 
     local dismissed = false
     local progress = nil
@@ -2692,7 +3066,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v3.7"
+local BZ_VERSION = "v3.8"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 56
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -2882,5 +3256,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v3.7 module ready.")
+print("[BZ] Menu UI v3.8 module ready.")
 return API
