@@ -388,109 +388,62 @@ local categoryOrder = 0
 local currentCat = nil
 local selectedCat = nil
 
-local ICONS = {
-    ["eye"] = "\u{1F441}\u{FE0F}",
-    ["eye-slash"] = "\u{1F648}",
-    ["user"] = "\u{1F464}",
-    ["users"] = "\u{1F465}",
-    ["cog"] = "\u{2699}\u{FE0F}",
-    ["home"] = "\u{1F3E0}",
-    ["bolt"] = "\u{26A1}",
-    ["fire"] = "\u{1F525}",
-    ["star"] = "\u{2B50}",
-    ["heart"] = "\u{2764}\u{FE0F}",
-    ["shield"] = "\u{1F6E1}\u{FE0F}",
-    ["crosshairs"] = "\u{1F3AF}",
-    ["map"] = "\u{1F5FA}\u{FE0F}",
-    ["location"] = "\u{1F4CD}",
-    ["car"] = "\u{1F697}",
-    ["plane"] = "\u{2708}\u{FE0F}",
-    ["gamepad"] = "\u{1F3AE}",
-    ["palette"] = "\u{1F3A8}",
-    ["wrench"] = "\u{1F527}",
-    ["lock"] = "\u{1F512}",
-    ["unlock"] = "\u{1F513}",
-    ["key"] = "\u{1F511}",
-    ["bell"] = "\u{1F514}",
-    ["bug"] = "\u{1F41B}",
-    ["code"] = "\u{1F4BB}",
-    ["skull"] = "\u{1F480}",
-    ["ghost"] = "\u{1F47B}",
-    ["sword"] = "\u{2694}\u{FE0F}",
-    ["bomb"] = "\u{1F4A3}",
-    ["coins"] = "\u{1F4B0}",
-    ["gift"] = "\u{1F381}",
-    ["search"] = "\u{1F50D}",
-    ["info"] = "\u{2139}\u{FE0F}",
-    ["warning"] = "\u{26A0}\u{FE0F}",
-    ["check"] = "\u{2705}",
-    ["times"] = "\u{274C}",
-    ["list"] = "\u{1F4CB}",
-    ["folder"] = "\u{1F4C1}",
-    ["save"] = "\u{1F4BE}",
-    ["camera"] = "\u{1F4F7}",
-    ["music"] = "\u{1F3B5}",
-    ["flag"] = "\u{1F6A9}",
-    ["globe"] = "\u{1F310}",
-    ["rocket"] = "\u{1F680}",
-    ["magic"] = "\u{2728}",
-    ["running"] = "\u{1F3C3}",
-    ["crown"] = "\u{1F451}",
-    ["dice"] = "\u{1F3B2}",
-    ["clock"] = "\u{1F552}",
-    ["sun"] = "\u{2600}\u{FE0F}",
-    ["moon"] = "\u{1F319}"
-}
+local LucideIcons = {}
+pcall(function()
+    LucideIcons = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua"))()
+end)
+
 local ICON_ALIASES = {
-    ["gear"] = "cog",
-    ["settings"] = "cog",
-    ["cogs"] = "cog",
-    ["house"] = "home",
-    ["lightning"] = "bolt",
-    ["flash"] = "bolt",
-    ["user-group"] = "users",
+    ["gear"] = "settings",
+    ["cog"] = "settings",
+    ["cogs"] = "settings",
+    ["home"] = "house",
+    ["bolt"] = "zap",
+    ["lightning"] = "zap",
+    ["flash"] = "zap",
     ["people"] = "users",
-    ["crosshair"] = "crosshairs",
-    ["target"] = "crosshairs",
-    ["aim"] = "crosshairs",
-    ["map-marker"] = "location",
-    ["map-pin"] = "location",
-    ["location-dot"] = "location",
-    ["pin"] = "location",
-    ["marker"] = "location",
-    ["teleport"] = "location",
+    ["user-group"] = "users",
+    ["crosshairs"] = "crosshair",
+    ["aim"] = "crosshair",
+    ["location"] = "map-pin",
+    ["map-marker"] = "map-pin",
+    ["pin"] = "map-pin",
+    ["teleport"] = "map-pin",
     ["tools"] = "wrench",
-    ["screwdriver-wrench"] = "wrench",
-    ["controller"] = "gamepad",
-    ["wand"] = "magic",
-    ["wand-magic-sparkles"] = "magic",
-    ["sparkles"] = "magic",
-    ["run"] = "running",
-    ["walk"] = "running",
-    ["person-running"] = "running",
-    ["dollar"] = "coins",
+    ["gamepad"] = "gamepad-2",
+    ["controller"] = "gamepad-2",
+    ["magic"] = "sparkles",
+    ["wand"] = "wand-sparkles",
+    ["running"] = "person-standing",
+    ["run"] = "person-standing",
+    ["walk"] = "person-standing",
     ["money"] = "coins",
     ["coin"] = "coins",
-    ["close"] = "times",
-    ["xmark"] = "times",
-    ["x"] = "times",
-    ["circle-info"] = "info",
-    ["triangle-exclamation"] = "warning",
-    ["circle-check"] = "check",
+    ["dollar"] = "dollar-sign",
+    ["close"] = "x",
+    ["times"] = "x",
+    ["xmark"] = "x",
+    ["warning"] = "triangle-alert",
+    ["triangle-exclamation"] = "triangle-alert",
+    ["check"] = "circle-check",
+    ["search"] = "search",
     ["magnifying-glass"] = "search",
+    ["save"] = "save",
     ["floppy-disk"] = "save",
     ["earth"] = "globe",
-    ["earth-americas"] = "globe",
     ["paint-brush"] = "palette",
     ["paintbrush"] = "palette",
     ["face-ghost"] = "ghost",
-    ["eye-low-vision"] = "eye-slash",
-    ["hide"] = "eye-slash",
-    ["sword-crossed"] = "sword",
-    ["swords"] = "sword",
+    ["eye-slash"] = "eye-off",
+    ["hide"] = "eye-off",
+    ["sword"] = "sword",
+    ["swords"] = "swords",
     ["dagger"] = "sword",
-    ["terminal"] = "code",
-    ["laptop-code"] = "code"
+    ["terminal"] = "terminal",
+    ["code"] = "code",
+    ["laptop-code"] = "code",
+    ["list"] = "list",
+    ["unlock"] = "lock-open"
 }
 
 local function resolveIcon(icon)
@@ -505,11 +458,11 @@ local function resolveIcon(icon)
     if str:match("^rbxassetid://") or str:match("^rbxasset://") then
         return "image", str
     end
-    local key = str:lower():match("([%w%-_]+)%s*$") or ""
+    local key = str:lower():gsub("^lucide:", ""):match("([%w%-_]+)%s*$") or ""
     key = key:gsub("_", "-")
     key = key:gsub("^fa%-", "")
     key = ICON_ALIASES[key] or key
-    if ICONS[key] then return "text", ICONS[key] end
+    if LucideIcons[key] then return "image", LucideIcons[key] end
     return "text", str
 end
 
@@ -3173,7 +3126,7 @@ local function buildUICategory()
     API:AddKeyBindInput("ui_menu_key", "Buka/Tutup Menu", "Ctrl", function()
         API:Toggle()
     end)
-    API:AddNote("Tekan tombol ini untuk membuka atau menutup menu. Klik kotaknya lalu tekan tombol baru untuk mengganti (Esc batal, Backspace kosongkan).")
+    API:AddNote("Klik kotak lalu tekan tombol baru.")
 
     API:AddSection("Config")
     local cfgStatus
@@ -3188,7 +3141,7 @@ local function buildUICategory()
             API:Error("Gagal menyimpan config", tostring(err), 4)
         end
     end)
-    cfgStatus = API:AddNote("Save Config menyimpan semua toggle, slider, dan pilihan ke folder \"BZ Menu\" sesuai Game ID (BZ_GameID_Config.json). Otomatis dimuat saat script dijalankan.")
+    cfgStatus = API:AddNote("Config tersimpan per Game ID.")
 
     currentCat = prev
 end
