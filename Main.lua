@@ -2332,15 +2332,24 @@ local function refreshVIP(e)
     if not (row and row.Parent and lbl) then return end
 
     if not v.star then
-        local star = noTheme(Instance.new("TextLabel", row))
+        local kind, value = resolveIcon("star")
+        local star
+        if kind == "image" then
+            star = noTheme(Instance.new("ImageLabel", row))
+            star.Image = value
+            star.ImageColor3 = VIP_STAR_COLOR
+            star.Size = UDim2.fromOffset(14, 14)
+        else
+            star = noTheme(Instance.new("TextLabel", row))
+            star.Text = "★"
+            star.Font = FontBold
+            star.TextSize = 16
+            star.TextColor3 = VIP_STAR_COLOR
+            star.Size = UDim2.fromOffset(18, 18)
+        end
         star.Name = "VIPStar"
         star.AnchorPoint = Vector2.new(0, 0.5)
-        star.Size = UDim2.fromOffset(18, 18)
         star.BackgroundTransparency = 1
-        star.Text = "★"
-        star.Font = FontBold
-        star.TextSize = 16
-        star.TextColor3 = VIP_STAR_COLOR
         star.ZIndex = 5
         v.star = star
     end
@@ -2404,6 +2413,12 @@ for fname, spec in pairs(VIP_SPECS) do
     local orig = API[fname]
     API[fname] = function(self, ...)
         local args = table.pack(...)
+        if fname == "AddToggle" and type(args[5]) == "boolean" then
+
+            if args[6] == nil then args[6] = args[5] end
+            args[5] = nil
+            args.n = math.max(args.n, 6)
+        end
         local opts = args[spec.n + 1]
         local isVip = (opts == true)
             or (type(opts) == "table" and (opts.VIP == true or opts.vip == true))
