@@ -152,7 +152,7 @@ task.spawn(function()
         acc = acc + dt
     end)
     while screenGui.Parent do
-        task.wait(0.5)
+        task.wait(1.5)
         if logo.Visible and logoStats.Visible then
             local fps = acc > 0 and math.floor(frames / acc + 0.5) or 0
             frames, acc = 0, 0
