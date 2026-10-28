@@ -766,45 +766,38 @@ function API:AddToggle(name, labelText, default, callback, style)
         local track = Instance.new("Frame", box)
         track.AnchorPoint = Vector2.new(1, 0.5)
         track.Position = UDim2.new(1, 0, 0.5, 0)
-        track.Size = UDim2.fromOffset(50, 30)
+        track.Size = UDim2.fromOffset(44, 24)
         track.BackgroundColor3 = C.Off
         track.BorderSizePixel = 0
         Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
         local knob = Instance.new("Frame", track)
-        knob.Size = UDim2.fromOffset(26, 26)
-        knob.Position = UDim2.fromOffset(2, 2)
+        knob.AnchorPoint = Vector2.new(0, 0.5)
+        knob.Position = UDim2.new(0, 3, 0.5, 0)
+        knob.Size = UDim2.fromOffset(18, 18)
         knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         knob.BorderSizePixel = 0
         Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
         return function(on, animate)
             put(track, {BackgroundColor3 = on and C.On or C.Off}, animate)
-            put(knob, {Position = on and UDim2.fromOffset(22, 2) or UDim2.fromOffset(2, 2)}, animate)
+            put(knob, {Position = on and UDim2.new(0, 23, 0.5, 0) or UDim2.new(0, 3, 0.5, 0)}, animate)
         end
     end
 
     builders.checkbox = function()
+
         local cb = Instance.new("Frame", box)
         cb.AnchorPoint = Vector2.new(1, 0.5)
         cb.Position = UDim2.new(1, 0, 0.5, 0)
-        cb.Size = UDim2.fromOffset(24, 24)
+        cb.Size = UDim2.fromOffset(22, 22)
         cb.BackgroundColor3 = C.Surface2
         cb.BorderSizePixel = 0
-        Instance.new("UICorner", cb).CornerRadius = UDim.new(0, 6)
+        Instance.new("UICorner", cb).CornerRadius = UDim.new(0, 7)
         local st = Instance.new("UIStroke", cb)
         st.Color = C.Stroke
         st.Thickness = 1.5
-        local mark = Instance.new("TextLabel", cb)
-        mark.Size = UDim2.fromScale(1, 1)
-        mark.BackgroundTransparency = 1
-        mark.Text = "✓"
-        mark.Font = FontBold
-        mark.TextSize = 16
-        mark.TextColor3 = C.Bg
-        mark.TextTransparency = 1
         return function(on, animate)
             put(cb, {BackgroundColor3 = on and C.On or C.Surface2}, animate)
             put(st, {Color = on and C.On or C.Stroke}, animate)
-            put(mark, {TextTransparency = on and 0 or 1}, animate)
         end
     end
 
@@ -836,10 +829,10 @@ function API:AddToggle(name, labelText, default, callback, style)
         local pill = Instance.new("Frame", box)
         pill.AnchorPoint = Vector2.new(1, 0.5)
         pill.Position = UDim2.new(1, 0, 0.5, 0)
-        pill.Size = UDim2.fromOffset(54, 24)
+        pill.Size = UDim2.fromOffset(46, 22)
         pill.BackgroundColor3 = C.Off
         pill.BorderSizePixel = 0
-        Instance.new("UICorner", pill).CornerRadius = UDim.new(1, 0)
+        Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 8)
         local txt = Instance.new("TextLabel", pill)
         txt.Size = UDim2.fromScale(1, 1)
         txt.BackgroundTransparency = 1
