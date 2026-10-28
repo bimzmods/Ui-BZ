@@ -2318,6 +2318,156 @@ function API:RemoveItem(name)
     keybinds[name] = nil
 end
 
+local VIP_STAR_COLOR = Color3.fromRGB(255, 200, 60)
+local vipUser = false
+
+local function vipLocked(v)
+    return v.vip and not vipUser
+end
+
+local function refreshVIP(e)
+    local v = e and e.vipState
+    if not v then return end
+    local row, lbl = v.row, v.lbl
+    if not (row and row.Parent and lbl) then return end
+
+    if not v.star then
+        local star = noTheme(Instance.new("TextLabel", row))
+        star.Name = "VIPStar"
+        star.AnchorPoint = Vector2.new(0, 0.5)
+        star.Size = UDim2.fromOffset(18, 18)
+        star.BackgroundTransparency = 1
+        star.Text = "★"
+        star.Font = FontBold
+        star.TextSize = 16
+        star.TextColor3 = VIP_STAR_COLOR
+        star.ZIndex = 5
+        v.star = star
+    end
+
+    if not v.lock then
+        local lock = noTheme(Instance.new("TextButton", row))
+        lock.Name = "VIPLock"
+        lock.Size = UDim2.fromScale(1, 1)
+        lock.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        lock.BackgroundTransparency = 0.6
+        lock.BorderSizePixel = 0
+        lock.AutoButtonColor = false
+        lock.Active = true
+        lock.Text = ""
+        lock.ZIndex = 20
+        local corner = row:FindFirstChildOfClass("UICorner")
+        if corner then
+            Instance.new("UICorner", lock).CornerRadius = corner.CornerRadius
+        end
+        v.lock = lock
+    end
+
+    local function place()
+        if not v.vip then return end
+        local w = lbl.TextBounds.X
+        if lbl.AbsoluteSize.X > 0 then w = math.min(w, lbl.AbsoluteSize.X) end
+        local x = lbl.Position.X.Offset + w + 6
+        local y = (lbl.Size.Y.Scale > 0)
+            and UDim2.new(0, x, 0.5, 0)
+            or UDim2.new(0, x, 0, lbl.Position.Y.Offset + lbl.Size.Y.Offset / 2)
+        v.star.Position = y
+    end
+
+    if v.vip and not v.reserved then
+
+        lbl.Size = lbl.Size - UDim2.fromOffset(22, 0)
+        v.reserved = true
+        lbl:GetPropertyChangedSignal("TextBounds"):Connect(place)
+        lbl:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
+    elseif (not v.vip) and v.reserved then
+        lbl.Size = lbl.Size + UDim2.fromOffset(22, 0)
+        v.reserved = false
+    end
+
+    v.star.Visible = v.vip and true or false
+    v.lock.Visible = vipLocked(v)
+    place()
+end
+
+local VIP_SPECS = {
+    AddToggle           = { n = 5, cb = {4} },
+    AddTapToggleOneClick= { n = 3, cb = {3} },
+    AddSelectMenu       = { n = 5, cb = {5} },
+    AddMultiSelectMenu  = { n = 5, cb = {5} },
+    AddKeyBindInput     = { n = 5, cb = {4, 5} },
+    AddColorPicker      = { n = 4, cb = {4} },
+    AddSlider           = { n = 7, cb = {6} },
+}
+
+for fname, spec in pairs(VIP_SPECS) do
+    local orig = API[fname]
+    API[fname] = function(self, ...)
+        local args = table.pack(...)
+        local opts = args[spec.n + 1]
+        local isVip = (opts == true)
+            or (type(opts) == "table" and (opts.VIP == true or opts.vip == true))
+
+        local v = { vip = isVip }
+
+        for _, idx in ipairs(spec.cb) do
+            local fn = args[idx]
+            if type(fn) == "function" then
+                args[idx] = function(...)
+                    if vipLocked(v) then return end
+                    return fn(...)
+                end
+            end
+        end
+
+        local e = orig(self, table.unpack(args, 1, spec.n))
+        if type(e) ~= "table" then return e end
+
+        v.row = e.row
+        v.lbl = e.row and e.row:FindFirstChildWhichIsA("TextLabel")
+        e.vipState = v
+
+        local origSet = e.set
+        if origSet then
+            e.set = function(...)
+                if vipLocked(v) then return end
+                return origSet(...)
+            end
+
+            if vipLocked(v) and e.kind == "toggle" then origSet(false, true) end
+        end
+
+        function e.setVIP(on)
+            v.vip = on and true or false
+            refreshVIP(e)
+        end
+
+        refreshVIP(e)
+        return e
+    end
+end
+API.AddKeyBind = API.AddKeyBindInput
+
+function API:SetVIP(name, on)
+    local e = registry[name]
+    if e and e.vipState then e.setVIP(on) return true end
+    return false
+end
+
+function API:IsVIP(name)
+    local e = registry[name]
+    return (e and e.vipState and e.vipState.vip) and true or false
+end
+
+function API:SetVIPUser(on)
+    vipUser = on and true or false
+    for _, e in pairs(registry) do refreshVIP(e) end
+end
+
+function API:IsVIPUser()
+    return vipUser
+end
+
 local function computeMenuPos()
     local cam = workspace.CurrentCamera
     local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
@@ -3228,5 +3378,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v3.9 module ready.")
+print("[BZ] Menu UI v4.0 module ready.")
 return API
