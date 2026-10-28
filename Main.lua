@@ -81,27 +81,48 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local ok = pcall(function() screenGui.Parent = CoreGui end)
 if not ok then screenGui.Parent = player:WaitForChild("PlayerGui") end
 
+local LOGO_H = 44
 local logo = Instance.new("Frame", screenGui)
 logo.Name = "Logo"
-logo.Size = UDim2.fromOffset(56, 56)
-logo.Position = CFG.LogoStart
-logo.BackgroundColor3 = C.Surface
+logo.AnchorPoint = Vector2.new(0.5, 0)
+logo.Position = UDim2.new(0.5, 0, 0, 14)
+logo.Size = UDim2.new(0, 0, 0, LOGO_H)
+logo.AutomaticSize = Enum.AutomaticSize.X
+logo.BackgroundColor3 = C.Bg
 logo.BorderSizePixel = 0
 logo.Active = true
-Instance.new("UICorner", logo).CornerRadius = UDim.new(0, 16)
+Instance.new("UICorner", logo).CornerRadius = UDim.new(1, 0)
 local logoStroke = Instance.new("UIStroke", logo)
 logoStroke.Color = C.Stroke
 logoStroke.Thickness = 1
 
-local logoText = Instance.new("TextLabel", logo)
+local logoPad = Instance.new("UIPadding", logo)
+logoPad.PaddingLeft = UDim.new(0, 5)
+logoPad.PaddingRight = UDim.new(0, 16)
+local logoList = Instance.new("UIListLayout", logo)
+logoList.FillDirection = Enum.FillDirection.Horizontal
+logoList.VerticalAlignment = Enum.VerticalAlignment.Center
+logoList.SortOrder = Enum.SortOrder.LayoutOrder
+logoList.Padding = UDim.new(0, 10)
+
+local logoBadge = Instance.new("Frame", logo)
+logoBadge.Name = "Badge"
+logoBadge.LayoutOrder = 1
+logoBadge.Size = UDim2.fromOffset(LOGO_H - 10, LOGO_H - 10)
+logoBadge.BackgroundColor3 = C.Accent
+logoBadge.BorderSizePixel = 0
+logoBadge.ClipsDescendants = true
+Instance.new("UICorner", logoBadge).CornerRadius = UDim.new(1, 0)
+
+local logoText = Instance.new("TextLabel", logoBadge)
 logoText.Size = UDim2.fromScale(1, 1)
 logoText.BackgroundTransparency = 1
 logoText.Text = "BZ"
 logoText.Font = FontBold
-logoText.TextSize = 22
-logoText.TextColor3 = C.Accent
+logoText.TextSize = 14
+logoText.TextColor3 = C.Bg
 
-local logoImage = Instance.new("ImageLabel", logo)
+local logoImage = Instance.new("ImageLabel", logoBadge)
 logoImage.Name = "LogoImage"
 logoImage.Size = UDim2.fromScale(1, 1)
 logoImage.BackgroundTransparency = 1
@@ -109,7 +130,43 @@ logoImage.BorderSizePixel = 0
 logoImage.ScaleType = Enum.ScaleType.Crop
 logoImage.Image = ""
 logoImage.Visible = false
-Instance.new("UICorner", logoImage).CornerRadius = UDim.new(0.25, 0)
+Instance.new("UICorner", logoImage).CornerRadius = UDim.new(1, 0)
+
+local logoStats = Instance.new("TextLabel", logo)
+logoStats.Name = "Stats"
+logoStats.LayoutOrder = 2
+logoStats.Size = UDim2.new(0, 0, 1, 0)
+logoStats.AutomaticSize = Enum.AutomaticSize.X
+logoStats.BackgroundTransparency = 1
+logoStats.Text = "FPS: 60 | Ping: 0ms"
+logoStats.Font = FontBold
+logoStats.TextSize = 17
+logoStats.TextColor3 = C.Text
+logoStats.TextXAlignment = Enum.TextXAlignment.Left
+
+task.spawn(function()
+    local RunService = game:GetService("RunService")
+    local frames, acc = 0, 0
+    local conn = RunService.RenderStepped:Connect(function(dt)
+        frames = frames + 1
+        acc = acc + dt
+    end)
+    while screenGui.Parent do
+        task.wait(0.5)
+        if logo.Visible and logoStats.Visible then
+            local fps = acc > 0 and math.floor(frames / acc + 0.5) or 0
+            frames, acc = 0, 0
+            local ping = 0
+            pcall(function()
+                ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5)
+            end)
+            logoStats.Text = string.format("FPS: %d | Ping: %dms", fps, ping)
+        else
+            frames, acc = 0, 0
+        end
+    end
+    conn:Disconnect()
+end)
 
 local menu = Instance.new("Frame", screenGui)
 menu.Name = "Menu"
@@ -2491,6 +2548,12 @@ local function computeMenuPos()
     local lsx, lsy = logo.AbsoluteSize.X, logo.AbsoluteSize.Y
     local mw, mh = menu.AbsoluteSize.X, menu.AbsoluteSize.Y
 
+    if ly + lsy + CFG.LogoGap + mh <= vp.Y - CFG.ScreenPad then
+        local cx = lx + lsx / 2 - mw / 2
+        cx = math.clamp(cx, CFG.ScreenPad, math.max(vp.X - mw - CFG.ScreenPad, CFG.ScreenPad))
+        return UDim2.fromOffset(cx, ly + lsy + CFG.LogoGap)
+    end
+
     local px = lx + lsx + CFG.LogoGap
     if px + mw > vp.X - CFG.ScreenPad then
         px = lx - mw - CFG.LogoGap
@@ -3204,14 +3267,14 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v3.9"
+local BZ_VERSION = "v4.0"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
-local logoSizeValue = 56
+local logoSizeValue = 44
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
 
 local function refreshLogoText()
     local len = utf8.len(logoText.Text) or #logoText.Text
-    local size = logoSizeValue * 0.39
+    local size = (logoSizeValue - 10) * 0.42
     if len > 2 then size = size * 2 / len end
     logoText.TextSize = math.max(8, math.floor(size))
 end
@@ -3262,20 +3325,25 @@ local function buildUICategory()
     currentCat = "ui"
 
     API:AddSection("Logo")
-    API:AddSlider("ui_logo_size", "Logo Size", 36, 96, 56, function(v)
-        logo.Size = UDim2.fromOffset(v, v)
+    API:AddSlider("ui_logo_size", "Logo Size", 32, 72, 44, function(v)
+        logo.Size = UDim2.new(0, 0, 0, v)
+        logoBadge.Size = UDim2.fromOffset(v - 10, v - 10)
+        logoStats.TextSize = math.max(11, math.floor(v * 0.39))
         logoSizeValue = v
         refreshLogoText()
-        local corner = logo:FindFirstChildOfClass("UICorner")
-        if corner then corner.CornerRadius = UDim.new(0, math.floor(v * 0.25)) end
     end, 1)
     API:AddSlider("ui_logo_alpha", "Logo Transparan (%)", 0, 90, 0, function(v)
         local a = v / 100
         logo.BackgroundTransparency = a
         logoStroke.Transparency = a
+        logoBadge.BackgroundTransparency = a
         logoText.TextTransparency = a
         logoImage.ImageTransparency = a
+        logoStats.TextTransparency = a
     end, 5)
+    API:AddToggle("ui_logo_stats", "Tampilkan FPS & Ping", true, function(on)
+        logoStats.Visible = on
+    end, "switch")
 
     API:AddSection("Thema")
     API:AddSelectMenu("ui_theme", "Thema", THEME_ORDER, "Ungu", function(v)
@@ -3394,5 +3462,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v4.0 module ready.")
+print("[BZ] Menu UI v4.1 module ready.")
 return API
