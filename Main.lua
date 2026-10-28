@@ -784,7 +784,6 @@ function API:AddToggle(name, labelText, default, callback, style)
     end
 
     builders.checkbox = function()
-
         local cb = Instance.new("Frame", box)
         cb.AnchorPoint = Vector2.new(1, 0.5)
         cb.Position = UDim2.new(1, 0, 0.5, 0)
@@ -795,9 +794,18 @@ function API:AddToggle(name, labelText, default, callback, style)
         local st = Instance.new("UIStroke", cb)
         st.Color = C.Stroke
         st.Thickness = 1.5
+
+        local fill = Instance.new("Frame", cb)
+        fill.AnchorPoint = Vector2.new(0.5, 0.5)
+        fill.Position = UDim2.fromScale(0.5, 0.5)
+        fill.Size = UDim2.fromOffset(0, 0)
+        fill.BackgroundColor3 = C.On
+        fill.BorderSizePixel = 0
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 4)
+
         return function(on, animate)
-            put(cb, {BackgroundColor3 = on and C.On or C.Surface2}, animate)
             put(st, {Color = on and C.On or C.Stroke}, animate)
+            put(fill, {Size = on and UDim2.fromOffset(12, 12) or UDim2.fromOffset(0, 0)}, animate)
         end
     end
 
