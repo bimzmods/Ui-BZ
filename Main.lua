@@ -3396,6 +3396,15 @@ local function getPos()
     return hrp and hrp.Position or nil
 end
 
+local function getHWID()
+    local ok, id = pcall(function()
+        if typeof(gethwid) == "function" then return gethwid() end
+        return game:GetService("RbxAnalyticsService"):GetClientId()
+    end)
+    if ok and id and tostring(id) ~= "" then return tostring(id) end
+    return nil
+end
+
 local function buildDevTools()
     if string.lower(player.Name) ~= string.lower(DEV_USERNAME) then return end
 
@@ -3439,6 +3448,19 @@ local function buildDevTools()
     API:AddTapToggleOneClick("dev_copy_game", "Copy Game ID", function()
         local s = tostring(game.GameId)
         report(copyText(s), s)
+    end)
+
+    API:AddSection("HWID")
+    local hwid = getHWID()
+    API:AddNote("HWID: " .. (hwid or "tidak tersedia"))
+    API:AddTapToggleOneClick("dev_copy_hwid", "Copy HWID", function()
+        local id = getHWID()
+        if not id then
+            status:SetText("✘ HWID tidak tersedia di executor ini")
+            API:Error("Gagal menyalin", "HWID tidak tersedia", 3)
+            return
+        end
+        report(copyText(id), id)
     end)
 
     status = API:AddNote("Status: siap")
