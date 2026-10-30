@@ -486,6 +486,12 @@ local function nextOrder()
 end
 
 local API = {}
+API._conns = {}
+function API._connect(signal, fn)
+    local c = signal:Connect(fn)
+    table.insert(API._conns, c)
+    return c
+end
 
 local categories = {}
 local categoryOrder = 0
@@ -1727,7 +1733,7 @@ local function prettyKey(key)
     return KEY_LABELS[key] or key
 end
 
-UserInputService.InputBegan:Connect(function(input, processed)
+API._connect(UserInputService.InputBegan, function(input, processed)
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 
     if listeningBind then
@@ -2969,7 +2975,7 @@ for _, rh in ipairs(resizeHandles) do
     end)
 end
 
-UserInputService.InputChanged:Connect(function(input)
+API._connect(UserInputService.InputChanged, function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement
     or input.UserInputType == Enum.UserInputType.Touch then
         if activeSlider and activeInput then
@@ -3008,7 +3014,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
-UserInputService.InputEnded:Connect(function(input)
+API._connect(UserInputService.InputEnded, function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
     or input.UserInputType == Enum.UserInputType.Touch then
         if activeSlider and activeInput and (input == activeInput
@@ -3059,6 +3065,10 @@ logo.MouseLeave:Connect(function()
 end)
 
 function API:Destroy()
+    for _, c in ipairs(API._conns) do
+        pcall(function() c:Disconnect() end)
+    end
+    table.clear(API._conns)
     if pickerGui then pickerGui:Destroy() end
     if screenGui then screenGui:Destroy() end
 end
