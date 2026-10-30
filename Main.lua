@@ -43,8 +43,13 @@ local CFG = {
     LogoStart = UDim2.new(0, 40, 0.5, -28),
     ConfigDir = "BZ Menu",
     CacheDir = "BZ Menu/cache",
-    ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json",
+    ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json", 
 }
+
+CFG.GameKey = tostring(game.GameId ~= 0 and game.GameId or game.PlaceId)
+CFG.GameDir = CFG.ConfigDir .. "/" .. CFG.GameKey
+CFG.ActiveFile = CFG.GameDir .. "/_active.txt"
+CFG.DefaultConfig = "default"
 local C = CFG.Colors
 local Font, FontBold = CFG.Font, CFG.FontBold
 
@@ -401,11 +406,33 @@ addResizeHandle(bottomEdge, 0, 1)
 local registry = {}
 local layoutCounter = 0
 
-local function readConfig()
+local function ensureDir(path)
+    if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
+        local ok, exists = pcall(isfolder, path)
+        if ok and not exists then pcall(makefolder, path) end
+    end
+end
+
+local function ensureConfigDir()
+    ensureDir(CFG.ConfigDir)
+    ensureDir(CFG.GameDir)
+end
+
+local function cleanConfigName(raw)
+    local s = tostring(raw or "")
+    s = s:gsub("[^%w _%-]", ""):gsub("^[%s_]+", ""):gsub("%s+$", "")
+    return s:sub(1, 32)
+end
+
+local function configPath(name)
+    return CFG.GameDir .. "/" .. name .. ".json"
+end
+
+local function readConfigFile(path)
     if typeof(isfile) ~= "function" or typeof(readfile) ~= "function" then return nil end
-    local okf, exists = pcall(isfile, CFG.ConfigFile)
+    local okf, exists = pcall(isfile, path)
     if not okf or not exists then return nil end
-    local okr, raw = pcall(readfile, CFG.ConfigFile)
+    local okr, raw = pcall(readfile, path)
     if not okr then return nil end
     local okd, data = pcall(function() return HttpService:JSONDecode(raw) end)
     if okd and type(data) == "table" and type(data.items) == "table" then
@@ -414,7 +441,26 @@ local function readConfig()
     return nil
 end
 
-local pendingConfig = readConfig() or {}
+local function readActiveName()
+    if typeof(isfile) ~= "function" or typeof(readfile) ~= "function" then return nil end
+    local okf, exists = pcall(isfile, CFG.ActiveFile)
+    if not okf or not exists then return nil end
+    local okr, raw = pcall(readfile, CFG.ActiveFile)
+    if not okr then return nil end
+    local n = cleanConfigName(raw)
+    return n ~= "" and n or nil
+end
+
+local function writeActiveName(name)
+    if typeof(writefile) ~= "function" then return end
+    ensureConfigDir()
+    pcall(writefile, CFG.ActiveFile, name)
+end
+
+local activeConfig = readActiveName() or CFG.DefaultConfig
+local pendingConfig = readConfigFile(configPath(activeConfig))
+    or readConfigFile(CFG.ConfigFile)
+    or {}
 
 local function applyPending(name)
     local v = pendingConfig[name]
@@ -423,6 +469,7 @@ local function applyPending(name)
     local want = (e.kind == "toggle" and "boolean")
         or (e.kind == "slider" and "number")
         or (e.kind == "select" and "string")
+        or (e.kind == "input" and "string")
         or (e.kind == "multiselect" and "table")
         or (e.kind == "keybind" and "string")
         or (e.kind == "color" and "string")
@@ -1028,50 +1075,75 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
+    local iconKind, iconValue = resolveIcon("mouse-pointer-click")
+    local useImage = (iconKind == "image")
+
     local mouse = Instance.new("Frame", row)
     mouse.Name = "MouseIcon"
     mouse.AnchorPoint = Vector2.new(0.5, 0.5)
     mouse.Position = UDim2.new(1, -28, 0.5, 0)
-    mouse.Size = UDim2.fromOffset(18, 26)
-    mouse.BackgroundColor3 = C.Surface2
     mouse.BorderSizePixel = 0
-    Instance.new("UICorner", mouse).CornerRadius = UDim.new(0, 9)
-    local mouseStroke = Instance.new("UIStroke", mouse)
-    mouseStroke.Color = C.Accent
-    mouseStroke.Thickness = 1.5
 
-    local leftBtn = Instance.new("Frame", mouse)
-    leftBtn.Name = "LeftButton"
-    leftBtn.Position = UDim2.fromOffset(1, 1)
-    leftBtn.Size = UDim2.fromOffset(8, 11)
-    leftBtn.BackgroundColor3 = C.Off
-    leftBtn.BorderSizePixel = 0
-    Instance.new("UICorner", leftBtn).CornerRadius = UDim.new(0, 7)
+    local iconImg, leftBtn, ripple, rippleStroke
+    if useImage then
+        mouse.Size = UDim2.fromOffset(26, 26)
+        mouse.BackgroundTransparency = 1
 
-    local hLine = Instance.new("Frame", mouse)
-    hLine.Name = "HLine"
-    hLine.Position = UDim2.fromOffset(0, 12)
-    hLine.Size = UDim2.new(1, 0, 0, 1)
-    hLine.BackgroundColor3 = C.Accent
-    hLine.BorderSizePixel = 0
+        iconImg = Instance.new("ImageLabel", mouse)
+        iconImg.Name = "ClickIcon"
+        iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
+        iconImg.Position = UDim2.fromScale(0.5, 0.5)
+        iconImg.Size = UDim2.fromScale(1, 1)
+        iconImg.BackgroundTransparency = 1
+        iconImg.Image = iconValue
+        iconImg.ImageColor3 = C.Accent
 
-    local vLine = Instance.new("Frame", mouse)
-    vLine.Name = "VLine"
-    vLine.Position = UDim2.fromOffset(9, 0)
-    vLine.Size = UDim2.fromOffset(1, 12)
-    vLine.BackgroundColor3 = C.Accent
-    vLine.BorderSizePixel = 0
+        ripple = Instance.new("Frame", mouse)
+        ripple.Name = "Ripple"
+        ripple.AnchorPoint = Vector2.new(0.5, 0.5)
+        ripple.Position = UDim2.fromScale(0.5, 0.5)
+    else
+        mouse.Size = UDim2.fromOffset(18, 26)
+        mouse.BackgroundColor3 = C.Surface2
+        Instance.new("UICorner", mouse).CornerRadius = UDim.new(0, 9)
+        local mouseStroke = Instance.new("UIStroke", mouse)
+        mouseStroke.Color = C.Accent
+        mouseStroke.Thickness = 1.5
 
-    local ripple = Instance.new("Frame", mouse)
-    ripple.Name = "Ripple"
-    ripple.AnchorPoint = Vector2.new(0.5, 0.5)
-    ripple.Position = UDim2.fromOffset(5, 7)
+        leftBtn = Instance.new("Frame", mouse)
+        leftBtn.Name = "LeftButton"
+        leftBtn.Position = UDim2.fromOffset(1, 1)
+        leftBtn.Size = UDim2.fromOffset(8, 11)
+        leftBtn.BackgroundColor3 = C.Off
+        leftBtn.BorderSizePixel = 0
+        Instance.new("UICorner", leftBtn).CornerRadius = UDim.new(0, 7)
+
+        local hLine = Instance.new("Frame", mouse)
+        hLine.Name = "HLine"
+        hLine.Position = UDim2.fromOffset(0, 12)
+        hLine.Size = UDim2.new(1, 0, 0, 1)
+        hLine.BackgroundColor3 = C.Accent
+        hLine.BorderSizePixel = 0
+
+        local vLine = Instance.new("Frame", mouse)
+        vLine.Name = "VLine"
+        vLine.Position = UDim2.fromOffset(9, 0)
+        vLine.Size = UDim2.fromOffset(1, 12)
+        vLine.BackgroundColor3 = C.Accent
+        vLine.BorderSizePixel = 0
+
+        ripple = Instance.new("Frame", mouse)
+        ripple.Name = "Ripple"
+        ripple.AnchorPoint = Vector2.new(0.5, 0.5)
+        ripple.Position = UDim2.fromOffset(5, 7)
+    end
+
     ripple.Size = UDim2.fromOffset(6, 6)
     ripple.BackgroundTransparency = 1
     ripple.BorderSizePixel = 0
     ripple.Visible = false
     Instance.new("UICorner", ripple).CornerRadius = UDim.new(1, 0)
-    local rippleStroke = Instance.new("UIStroke", ripple)
+    rippleStroke = Instance.new("UIStroke", ripple)
     rippleStroke.Color = C.Accent
     rippleStroke.Thickness = 1.5
 
@@ -1083,7 +1155,12 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     local busy = false
 
     local function play()
-        TweenService:Create(leftBtn, TweenInfo.new(0.08), {BackgroundColor3 = C.Accent}):Play()
+        if useImage then
+            iconImg.ImageColor3 = C.Text
+            TweenService:Create(iconImg, TweenInfo.new(0.08), {Size = UDim2.fromScale(0.78, 0.78)}):Play()
+        else
+            TweenService:Create(leftBtn, TweenInfo.new(0.08), {BackgroundColor3 = C.Accent}):Play()
+        end
         ripple.Size = UDim2.fromOffset(6, 6)
         rippleStroke.Transparency = 0
         ripple.Visible = true
@@ -1094,7 +1171,13 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     end
 
     local function reset()
-        TweenService:Create(leftBtn, TweenInfo.new(0.2), {BackgroundColor3 = C.Off}):Play()
+        if useImage then
+            TweenService:Create(iconImg, TweenInfo.new(0.2), {
+                Size = UDim2.fromScale(1, 1), ImageColor3 = C.Accent
+            }):Play()
+        else
+            TweenService:Create(leftBtn, TweenInfo.new(0.2), {BackgroundColor3 = C.Off}):Play()
+        end
         ripple.Visible = false
     end
 
@@ -1209,6 +1292,24 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
         TweenService:Create(arrow, TweenInfo.new(0.15), {Rotation = 0}):Play()
     end
 
+    local function setOptions(newOptions, keep)
+        closeSelect()
+        options = newOptions or {}
+        listH = #options * ITEM_H + math.max(#options - 1, 0) * GAP + PAD * 2
+        valid = {}
+        for _, opt in ipairs(options) do valid[opt] = true end
+        local want = keep
+        if want == nil or not valid[want] then
+            want = (selected ~= nil and valid[selected]) and selected or options[1]
+        end
+        if want ~= nil then
+            setSelected(want, true)
+        else
+            selected = nil
+            valLbl.Text = "-"
+        end
+    end
+
     local function openSelect()
         if #options == 0 then return end
         if activeSelectClose then activeSelectClose() end
@@ -1308,12 +1409,14 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
 
     local initial = options[1]
     if default ~= nil and valid[default] then initial = default end
-    if initial ~= nil then setSelected(initial, true) end
+    if initial ~= nil then setSelected(initial, true) else valLbl.Text = "-" end
 
     registry[name] = {
         kind = "select",
         set = setSelected,
         get = function() return selected end,
+        setOptions = setOptions,
+        getOptions = function() return options end,
         row = row,
     }
     if default ~= nil and callback and selected ~= nil then pcall(callback, selected) end
@@ -2159,6 +2262,9 @@ function API:SetTheme(themeName)
         if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
             inst.TextColor3 = map(inst.TextColor3)
         end
+        if inst:IsA("TextBox") then
+            inst.PlaceholderColor3 = map(inst.PlaceholderColor3)
+        end
         if inst:IsA("ScrollingFrame") then
             inst.ScrollBarImageColor3 = map(inst.ScrollBarImageColor3)
         end
@@ -2179,36 +2285,202 @@ function API:SetTheme(themeName)
     return true
 end
 
-function API:SaveConfig()
-    if typeof(writefile) ~= "function" then
-        return false, "writefile tidak didukung executor"
-    end
+local SAVED_KINDS = {
+    toggle = true, slider = true, select = true, input = true,
+    multiselect = true, keybind = true, color = true,
+}
+
+local function collectItems()
     local items = {}
     for name, e in pairs(registry) do
-        if e.kind == "toggle" or e.kind == "slider" or e.kind == "select" or e.kind == "multiselect" or e.kind == "keybind" or e.kind == "color" then
+        if SAVED_KINDS[e.kind] and not e.noSave then
             items[name] = e.get()
         end
     end
+    return items
+end
+
+function API:GetActiveConfig()
+    return activeConfig
+end
+
+function API:GetConfigList()
+    local list, seen = {}, {}
+    if typeof(listfiles) == "function" then
+        local ok, files = pcall(listfiles, CFG.GameDir)
+        if ok and type(files) == "table" then
+            for _, path in ipairs(files) do
+                local n = tostring(path):match("([^/\\]+)%.json$")
+                if n and n:sub(1, 1) ~= "_" and not seen[n] then
+                    seen[n] = true
+                    list[#list + 1] = n
+                end
+            end
+        end
+    end
+    table.sort(list, function(x, y) return x:lower() < y:lower() end)
+    return list
+end
+
+function API:SaveConfig(name)
+    if typeof(writefile) ~= "function" then
+        return false, "writefile tidak didukung executor"
+    end
+    name = cleanConfigName(name ~= nil and name or activeConfig)
+    if name == "" then return false, "nama config kosong" end
+
     local okj, json = pcall(function()
-        return HttpService:JSONEncode({ version = 1, items = items })
+        return HttpService:JSONEncode({ version = 2, gameId = CFG.GameKey, items = collectItems() })
     end)
     if not okj then return false, "gagal membuat JSON config" end
 
-    if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
-        local okd, exists = pcall(isfolder, CFG.ConfigDir)
-        if okd and not exists then pcall(makefolder, CFG.ConfigDir) end
-    end
-    local okw, err = pcall(writefile, CFG.ConfigFile, json)
+    ensureConfigDir()
+    local path = configPath(name)
+    local okw, err = pcall(writefile, path, json)
     if not okw then return false, tostring(err) end
+
+    activeConfig = name
+    writeActiveName(name)
+    return true, path
+end
+
+function API:CreateConfig(name)
+    name = cleanConfigName(name)
+    if name == "" then return false, "nama config kosong" end
+    if typeof(isfile) == "function" then
+        local ok, exists = pcall(isfile, configPath(name))
+        if ok and exists then return false, "config \"" .. name .. "\" sudah ada" end
+    end
+    return API:SaveConfig(name)
+end
+
+function API:LoadConfig(name)
+    name = cleanConfigName(name ~= nil and name or activeConfig)
+    if name == "" then return false, "nama config kosong" end
+    local items = readConfigFile(configPath(name))
+    if not items then return false, "config \"" .. name .. "\" tidak ditemukan" end
+
+    pendingConfig = items
+    activeConfig = name
+    writeActiveName(name)
+
+    local names = {}
+    for n in pairs(registry) do names[#names + 1] = n end
+    for _, n in ipairs(names) do applyPending(n) end
     return true
 end
 
-function API:LoadConfig()
-    local items = readConfig()
-    if not items then return false end
-    pendingConfig = items
-    for name in pairs(registry) do applyPending(name) end
+function API:DeleteConfig(name)
+    name = cleanConfigName(name)
+    if name == "" then return false, "pilih config dulu" end
+    if typeof(delfile) ~= "function" then
+        return false, "delfile tidak didukung executor"
+    end
+    local path = configPath(name)
+    if typeof(isfile) == "function" then
+        local ok, exists = pcall(isfile, path)
+        if not (ok and exists) then return false, "config \"" .. name .. "\" tidak ditemukan" end
+    end
+    local okd, err = pcall(delfile, path)
+    if not okd then return false, tostring(err) end
+
+    if name == activeConfig then
+        activeConfig = CFG.DefaultConfig
+        writeActiveName(activeConfig)
+    end
     return true
+end
+
+function API:AddInputText(name, labelText, default, callback, placeholder)
+    local row = Instance.new("Frame", currentBody())
+    row.Name = name .. "_Row"
+    row.Size = UDim2.new(1, 0, 0, 46)
+    row.BackgroundColor3 = C.Surface
+    row.BorderSizePixel = 0
+    row.LayoutOrder = nextOrder()
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
+    local s = Instance.new("UIStroke", row)
+    s.Color = C.Stroke
+    s.Thickness = 1
+    s.Transparency = 0.6
+
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(0.4, -14, 1, 0)
+    lbl.Position = UDim2.fromOffset(14, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText or name
+    lbl.Font = Font
+    lbl.TextSize = 14
+    lbl.TextColor3 = C.Text
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextTruncate = Enum.TextTruncate.AtEnd
+
+    local box = Instance.new("TextBox", row)
+    box.Name = "Input"
+    box.Size = UDim2.new(0.6, -26, 0, 28)
+    box.AnchorPoint = Vector2.new(1, 0.5)
+    box.Position = UDim2.new(1, -12, 0.5, 0)
+    box.BackgroundColor3 = C.Surface2
+    box.BorderSizePixel = 0
+    box.ClearTextOnFocus = false
+    box.ClipsDescendants = true
+    box.Font = FontBold
+    box.TextSize = 13
+    box.TextColor3 = C.Text
+    box.PlaceholderText = placeholder or "Ketik di sini..."
+    box.PlaceholderColor3 = C.TextDim
+    box.TextXAlignment = Enum.TextXAlignment.Left
+    box.Text = ""
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
+    local pad = Instance.new("UIPadding", box)
+    pad.PaddingLeft = UDim.new(0, 10)
+    pad.PaddingRight = UDim.new(0, 10)
+
+    local bs = Instance.new("UIStroke", box)
+    bs.Color = C.Stroke
+    bs.Thickness = 1
+    bs.Transparency = 1
+    box.Focused:Connect(function()
+        bs.Color = C.Accent
+        TweenService:Create(bs, TweenInfo.new(0.12), {Transparency = 0}):Play()
+    end)
+
+    local value = ""
+    local function setValue(v, silent)
+        v = tostring(v == nil and "" or v)
+        value = v
+        box.Text = v
+        if not silent and callback then pcall(callback, v) end
+    end
+
+    box.FocusLost:Connect(function()
+        TweenService:Create(bs, TweenInfo.new(0.12), {Transparency = 1}):Play()
+        value = box.Text
+        if callback then pcall(callback, value, box) end
+    end)
+
+    if default ~= nil then setValue(default, true) end
+
+    registry[name] = {
+        kind = "input",
+        set = setValue,
+        get = function() return value end,
+        box = box,
+        row = row,
+    }
+    applyPending(name)
+    return registry[name]
+end
+
+function API:GetInput(name)
+    local e = registry[name]
+    if e and e.kind == "input" then return e.get() end
+    return nil
+end
+
+function API:SetInput(name, value, silent)
+    local e = registry[name]
+    if e and e.kind == "input" then e.set(value, silent) end
 end
 
 function API:AddSlider(name, labelText, min, max, default, callback, step)
@@ -2461,6 +2733,7 @@ local VIP_SPECS = {
     AddToggle           = { n = 5, cb = {4} },
     AddTapToggleOneClick= { n = 3, cb = {3} },
     AddSelectMenu       = { n = 5, cb = {5} },
+    AddInputText        = { n = 5, cb = {4} },
     AddMultiSelectMenu  = { n = 5, cb = {5} },
     AddKeyBindInput     = { n = 5, cb = {4, 5} },
     AddColorPicker      = { n = 4, cb = {4} },
@@ -3363,19 +3636,92 @@ local function buildUICategory()
     API:AddNote("Klik kotak lalu tekan tombol baru.")
 
     API:AddSection("Config")
-    local cfgStatus
+    local cfgStatus, cfgSelect, cfgName
+
+    local function say(ok, text)
+        if cfgStatus then cfgStatus:SetText((ok and "✔ " or "✘ ") .. text) end
+    end
+    local function refreshConfigList(pick)
+        cfgSelect.setOptions(API:GetConfigList(), pick or API:GetActiveConfig())
+    end
+
+    API:AddNote("Folder: " .. CFG.GameDir .. "\nConfig disimpan per Game ID (" .. CFG.GameKey .. ").")
+
+    cfgSelect = API:AddSelectMenu("ui_cfg_select", "Pilih Config", API:GetConfigList(), API:GetActiveConfig())
+    cfgSelect.noSave = true
+    cfgName = API:AddInputText("ui_cfg_name", "Nama Baru", "", nil, "contoh: legit")
+    cfgName.noSave = true
+
     API:AddTapToggleOneClick("ui_save_config", "Save Config", function()
-        local ok, err = API:SaveConfig()
-        if cfgStatus then
-            cfgStatus:SetText(ok and "✔ Config tersimpan" or ("✘ " .. tostring(err)))
-        end
+        local target = cfgSelect.get() or API:GetActiveConfig()
+        local ok, res = API:SaveConfig(target)
         if ok then
-            API:Success("Config tersimpan", CFG.ConfigFile, 3)
+            refreshConfigList(target)
+            say(true, "Tersimpan: " .. target)
+            API:Success("Config tersimpan", tostring(res), 3)
         else
-            API:Error("Gagal menyimpan config", tostring(err), 4)
+            say(false, tostring(res))
+            API:Error("Gagal menyimpan config", tostring(res), 4)
         end
     end)
-    cfgStatus = API:AddNote("Config tersimpan per Game ID.")
+
+    API:AddTapToggleOneClick("ui_load_config", "Load Config", function()
+        local target = cfgSelect.get()
+        if not target then
+            say(false, "belum ada config, Save atau Create dulu")
+            API:Warn("Load Config", "Belum ada config tersimpan", 3)
+            return
+        end
+        local ok, res = API:LoadConfig(target)
+        if ok then
+            say(true, "Dimuat: " .. target)
+            API:Success("Config dimuat", target, 3)
+        else
+            say(false, tostring(res))
+            API:Error("Gagal memuat config", tostring(res), 4)
+        end
+    end)
+
+    API:AddTapToggleOneClick("ui_create_config", "Create Config", function()
+        local newName = cleanConfigName(cfgName.get())
+        local ok, res = API:CreateConfig(newName)
+        if ok then
+            cfgName.set("", true)
+            refreshConfigList(newName)
+            say(true, "Dibuat: " .. newName)
+            API:Success("Config dibuat", tostring(res), 3)
+        else
+            say(false, tostring(res))
+            API:Error("Gagal membuat config", tostring(res), 4)
+        end
+    end)
+
+    local deleteArm = { name = nil, at = 0 }
+    API:AddTapToggleOneClick("ui_delete_config", "Delete Config", function()
+        local target = cfgSelect.get()
+        if not target then
+            say(false, "pilih config dulu")
+            return
+        end
+        if deleteArm.name ~= target or os.clock() - deleteArm.at > 4 then
+            deleteArm.name, deleteArm.at = target, os.clock()
+            say(false, "Tekan Delete lagi (4 detik) untuk menghapus \"" .. target .. "\"")
+            API:Warn("Hapus config?", "Tekan Delete sekali lagi untuk menghapus " .. target, 4)
+            return
+        end
+        deleteArm.name = nil
+        local ok, res = API:DeleteConfig(target)
+        if ok then
+            refreshConfigList()
+            say(true, "Dihapus: " .. target)
+            API:Success("Config dihapus", target, 3)
+        else
+            say(false, tostring(res))
+            API:Error("Gagal menghapus config", tostring(res), 4)
+        end
+    end)
+
+    cfgStatus = API:AddNote("Status: siap")
 
     currentCat = prev
 end
@@ -3484,5 +3830,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v4.1 module ready.")
+print("[BZ] Menu UI v4.2 module ready.")
 return API
