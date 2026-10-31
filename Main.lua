@@ -31,12 +31,12 @@ local CFG = {
     },
     Font      = Enum.Font.BuilderSans,
     FontBold  = Enum.Font.BuilderSansBold,
-    MenuWDef  = 520,
-    MenuHDef  = 720,
+    MenuWDef  = 720,
+    MenuHDef  = 450,
     MenuWMin  = 220,
     MenuHMin  = 240,
-    MenuWMax  = 520,
-    MenuHMax  = 720,
+    MenuWMax  = 720,
+    MenuHMax  = 450,
     HeaderH   = 52,
     LogoGap   = 12,
     ScreenPad = 10,
@@ -3831,8 +3831,8 @@ local function buildHomeCategory()
         if narrow == stacked then return end
         stacked = narrow
         rowLay.FillDirection = narrow and Enum.FillDirection.Vertical or Enum.FillDirection.Horizontal
-        colLeft.Size = narrow and UDim2.new(1, 0, 0, 0) or UDim2.new(0.56, -4, 0, 0)
-        colRight.Size = narrow and UDim2.new(1, 0, 0, 0) or UDim2.new(0.44, -4, 0, 0)
+        colLeft.Size = narrow and UDim2.new(1, 0, 0, 0) or UDim2.new(0.52, -4, 0, 0)
+        colRight.Size = narrow and UDim2.new(1, 0, 0, 0) or UDim2.new(0.48, -4, 0, 0)
     end
     applyColumns()
     row:GetPropertyChangedSignal("AbsoluteSize"):Connect(applyColumns)
