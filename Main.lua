@@ -156,7 +156,6 @@ task.spawn(function()
         frames = frames + 1
         acc = acc + dt
     end)
-    screenGui.Destroying:Connect(function() pcall(function() conn:Disconnect() end) end)
     while screenGui.Parent do
         task.wait(1.5)
         if logo.Visible and logoStats.Visible then
@@ -3076,7 +3075,7 @@ end
 
 API._unloadHooks = {}
 API.Unloaded = false
-.
+
 function API:OnUnload(fn)
     if type(fn) == "function" then table.insert(API._unloadHooks, fn) end
     return fn
@@ -3897,5 +3896,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v4.2 module ready.")
+print("[BZ] Menu UI v4.2 module ready")
 return API
