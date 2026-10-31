@@ -3645,6 +3645,289 @@ function API:ResetTexts()
     API:SetStudio(nil)
 end
 
+local HOME_DISCORD_INVITE = "https://discord.gg/vZmZcvrfU7"
+
+local function buildHomeCategory()
+    local MarketplaceService = game:GetService("MarketplaceService")
+    local LocalizationService = game:GetService("LocalizationService")
+    local StatsService = game:GetService("Stats")
+
+    local prev = currentCat
+    createCategory("home", "Home", true, { order = 1, icon = "home" })
+    currentCat = "home"
+    local body = categories["home"].body
+    local joinedAt = os.clock()
+
+    local function homeCopy(text)
+        local fn = (typeof(setclipboard) == "function" and setclipboard)
+            or (typeof(toclipboard) == "function" and toclipboard)
+        if not fn then return false end
+        return (pcall(fn, text))
+    end
+
+    local function newLabel(parent, text, size, bold, color, pos, sz)
+        local l = Instance.new("TextLabel", parent)
+        l.BackgroundTransparency = 1
+        l.Position = pos
+        l.Size = sz
+        l.Text = text
+        l.Font = bold and FontBold or Font
+        l.TextSize = size
+        l.TextColor3 = color
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.TextYAlignment = Enum.TextYAlignment.Center
+        l.TextTruncate = Enum.TextTruncate.AtEnd
+        return l
+    end
+
+    local function newCard(order, tint, tintAlpha, fixedH)
+        local f = Instance.new("Frame", body)
+        f.Name = "HomeCard_" .. order
+        f.LayoutOrder = order
+        f.BackgroundColor3 = C.Surface
+        f.BorderSizePixel = 0
+        f.Size = UDim2.new(1, 0, 0, fixedH or 0)
+        if not fixedH then f.AutomaticSize = Enum.AutomaticSize.Y end
+        Instance.new("UICorner", f).CornerRadius = UDim.new(0, 12)
+        local s = Instance.new("UIStroke", f)
+        s.Color = C.Stroke
+        s.Thickness = 1
+        s.Transparency = 0.6
+
+        local overlay
+        if tint then
+            overlay = Instance.new("Frame", f)
+            overlay.Name = "Tint"
+            overlay.Size = UDim2.fromScale(1, 1)
+            overlay.BackgroundColor3 = tint
+            overlay.BorderSizePixel = 0
+            Instance.new("UICorner", overlay).CornerRadius = UDim.new(0, 12)
+            local g = Instance.new("UIGradient", overlay)
+            g.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, tintAlpha or 0.6),
+                NumberSequenceKeypoint.new(1, 1),
+            })
+        end
+
+        local content = Instance.new("Frame", f)
+        content.Name = "Content"
+        content.BackgroundTransparency = 1
+        content.BorderSizePixel = 0
+        content.Size = UDim2.new(1, 0, 0, fixedH or 0)
+        if not fixedH then content.AutomaticSize = Enum.AutomaticSize.Y end
+        local pad = Instance.new("UIPadding", content)
+        pad.PaddingTop = UDim.new(0, 12)
+        pad.PaddingBottom = UDim.new(0, 12)
+        pad.PaddingLeft = UDim.new(0, 12)
+        pad.PaddingRight = UDim.new(0, 12)
+        return f, content, overlay
+    end
+
+    local function stackLayout(content)
+        local lay = Instance.new("UIListLayout", content)
+        lay.Padding = UDim.new(0, 8)
+        lay.SortOrder = Enum.SortOrder.LayoutOrder
+        return lay
+    end
+
+    local function newHeading(parent, title, desc, order)
+        local h = Instance.new("Frame", parent)
+        h.BackgroundTransparency = 1
+        h.Size = UDim2.new(1, 0, 0, 34)
+        h.LayoutOrder = order
+        newLabel(h, title, 15, true, C.Text, UDim2.fromOffset(0, 0), UDim2.new(1, 0, 0, 18))
+        newLabel(h, desc, 11, false, C.TextDim, UDim2.fromOffset(0, 19), UDim2.new(1, 0, 0, 14))
+        return h
+    end
+
+    local function newGrid(parent, order)
+        local g = Instance.new("Frame", parent)
+        g.BackgroundTransparency = 1
+        g.Size = UDim2.new(1, 0, 0, 0)
+        g.AutomaticSize = Enum.AutomaticSize.Y
+        g.LayoutOrder = order
+        local lay = Instance.new("UIGridLayout", g)
+        lay.CellSize = UDim2.new(0.5, -4, 0, 46)
+        lay.CellPadding = UDim2.fromOffset(8, 8)
+        lay.SortOrder = Enum.SortOrder.LayoutOrder
+        return g
+    end
+
+    local function newTile(parent, order, title, value, onClick)
+        local t = Instance.new(onClick and "TextButton" or "Frame", parent)
+        t.LayoutOrder = order
+        t.BackgroundColor3 = C.Surface2
+        t.BorderSizePixel = 0
+        if onClick then
+            t.AutoButtonColor = false
+            t.Text = ""
+            t.MouseButton1Click:Connect(onClick)
+        end
+        Instance.new("UICorner", t).CornerRadius = UDim.new(0, 10)
+        newLabel(t, title, 12, true, C.Text, UDim2.fromOffset(10, 6), UDim2.new(1, -20, 0, 16))
+        local v = newLabel(t, value, 11, false, C.TextDim, UDim2.fromOffset(10, 24), UDim2.new(1, -20, 0, 14))
+        return function(text) v.Text = tostring(text) end
+    end
+
+    local _, hero = newCard(1, nil, nil, 80)
+    local avatar = Instance.new("ImageLabel", hero)
+    avatar.Size = UDim2.fromOffset(56, 56)
+    avatar.BackgroundColor3 = C.Surface2
+    avatar.BorderSizePixel = 0
+    avatar.Image = ""
+    Instance.new("UICorner", avatar).CornerRadius = UDim.new(0, 12)
+    local displayName = player.DisplayName ~= "" and player.DisplayName or player.Name
+    newLabel(hero, "Hello, " .. displayName, 16, true, C.Text, UDim2.fromOffset(68, 4), UDim2.new(1, -68, 0, 24))
+    local heroSub = newLabel(hero, "@" .. player.Name, 12, false, C.TextDim, UDim2.fromOffset(68, 30), UDim2.new(1, -68, 0, 18))
+
+    task.spawn(function()
+        local ok, url = pcall(function()
+            return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+        end)
+        if ok and url and avatar.Parent then avatar.Image = url end
+    end)
+    task.spawn(function()
+        local ok, info = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end)
+        local gameName = (ok and info and info.Name) or game.Name
+        if heroSub.Parent and gameName and gameName ~= "" then
+            heroSub.Text = "@" .. player.Name .. " · " .. gameName
+        end
+    end)
+
+    local _, serverBox = newCard(2, C.On, 0.78)
+    stackLayout(serverBox)
+    newHeading(serverBox, "Server", "Information on the session you're currently in", 1)
+    local serverGrid = newGrid(serverBox, 2)
+    local setPlayers = newTile(serverGrid, 1, "Players", "-")
+    local setMax = newTile(serverGrid, 2, "Maximum Players", "-")
+    local setPing = newTile(serverGrid, 3, "Latency", "-")
+    local setRegion = newTile(serverGrid, 4, "Your Region", "-")
+    local setTime = newTile(serverGrid, 5, "In server for", "00:00:00")
+    newTile(serverGrid, 6, "Join Script", "Tap to copy join script", function()
+        local joinCode = string.format(
+            'game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game:GetService("Players").LocalPlayer)',
+            game.PlaceId, game.JobId)
+        if homeCopy(joinCode) then
+            API:Success("Tersalin", "Join script", 2)
+        else
+            API:Error("Gagal menyalin", "Executor tidak support clipboard", 3)
+        end
+    end)
+
+    task.spawn(function()
+        local ok, region = pcall(function() return LocalizationService:GetCountryRegionForPlayerAsync(player) end)
+        setRegion((ok and region and region ~= "") and region or "-")
+    end)
+
+    local execName
+    if typeof(identifyexecutor) == "function" then
+        local ok, name, ver = pcall(identifyexecutor)
+        if ok and name then execName = tostring(name) .. ((ver and tostring(ver) ~= "") and (" " .. tostring(ver)) or "") end
+    end
+    local canFiles = typeof(writefile) == "function" and typeof(readfile) == "function"
+    local canClip = typeof(setclipboard) == "function" or typeof(toclipboard) == "function"
+    local execTint = execName and C.On or Color3.fromRGB(255, 204, 0)
+    local _, execBox = newCard(3, execTint, 0.78)
+    stackLayout(execBox)
+    newHeading(execBox, "Executor", execName or "Executor tidak terdeteksi", 1)
+    newLabel(execBox, "Save config: " .. (canFiles and "OK" or "tidak ada")
+        .. "  ·  Clipboard: " .. (canClip and "OK" or "tidak ada"),
+        12, false, C.TextDim, UDim2.new(), UDim2.new(1, 0, 0, 16)).LayoutOrder = 2
+
+    local _, friendsBox = newCard(4, C.Accent, 0.82)
+    stackLayout(friendsBox)
+    newHeading(friendsBox, "Friends", "Find out what your friends are currently doing", 1)
+    local friendsGrid = newGrid(friendsBox, 2)
+    local setInServer = newTile(friendsGrid, 1, "In Server", "-")
+    local setOffline = newTile(friendsGrid, 2, "Offline", "-")
+    local setOnline = newTile(friendsGrid, 3, "Online", "-")
+    local setAll = newTile(friendsGrid, 4, "All", "-")
+
+    local discord, discordBox = newCard(5, C.Accent, 0.35, 70)
+    newLabel(discordBox, "Discord", 18, true, C.Text, UDim2.fromOffset(0, 2), UDim2.new(1, 0, 0, 24))
+    newLabel(discordBox, HOME_DISCORD_INVITE ~= "" and "Tap to copy the Discord invite" or "Invite belum diisi (HOME_DISCORD_INVITE)",
+        13, false, C.Text, UDim2.fromOffset(0, 28), UDim2.new(1, 0, 0, 18))
+    local discordBtn = Instance.new("TextButton", discord)
+    discordBtn.Size = UDim2.fromScale(1, 1)
+    discordBtn.BackgroundTransparency = 1
+    discordBtn.Text = ""
+    discordBtn.ZIndex = 3
+    discordBtn.MouseButton1Click:Connect(function()
+        if HOME_DISCORD_INVITE == "" then
+            API:Warn("Discord", "Isi HOME_DISCORD_INVITE di kode menu dulu", 3)
+        elseif homeCopy(HOME_DISCORD_INVITE) then
+            API:Success("Tersalin", HOME_DISCORD_INVITE, 3)
+        else
+            API:Error("Gagal menyalin", "Executor tidak support clipboard", 3)
+        end
+    end)
+
+    local friendCache = {}
+    local function isFriend(p)
+        local cached = friendCache[p.UserId]
+        if cached ~= nil then return cached end
+        local ok, res = pcall(function() return player:IsFriendsWith(p.UserId) end)
+        if not ok then return false end
+        friendCache[p.UserId] = res and true or false
+        return friendCache[p.UserId]
+    end
+
+    local function refreshServer()
+        local n = #Players:GetPlayers()
+        setPlayers(n .. " playing")
+        setMax(Players.MaxPlayers .. " players can join this server")
+        local ok, ping = pcall(function()
+            return math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5)
+        end)
+        setPing(ok and (ping .. "ms") or "-")
+        local t = math.floor(os.clock() - joinedAt)
+        setTime(string.format("%02d:%02d:%02d", math.floor(t / 3600), math.floor(t / 60) % 60, t % 60))
+
+        local friends = 0
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player and isFriend(p) then friends = friends + 1 end
+        end
+        setInServer(friends == 0 and "no friends" or (friends .. (friends == 1 and " friend" or " friends")))
+    end
+
+    local function refreshFriends()
+        local okAll, total = pcall(function()
+            local pages = Players:GetFriendsAsync(player.UserId)
+            local n = 0
+            for _ = 1, 40 do
+                n = n + #pages:GetCurrentPage()
+                if pages.IsFinished then break end
+                pages:AdvanceToNextPageAsync()
+            end
+            return n
+        end)
+        local okOn, online = pcall(function() return #player:GetFriendsOnline(200) end)
+        if okAll then setAll(total .. " Friends") else setAll("-") end
+        if okOn then setOnline(online .. " friends") else setOnline("-") end
+        if okAll and okOn then setOffline(math.max(total - online, 0) .. " friends") else setOffline("-") end
+    end
+
+    task.spawn(function()
+        refreshServer()
+        refreshFriends()
+        local lastFriends = os.clock()
+        while screenGui.Parent do
+            task.wait(1)
+            local cat = categories["home"]
+            if isOpen and cat and cat.body.Visible then
+                pcall(refreshServer)
+                if os.clock() - lastFriends >= 30 then
+                    lastFriends = os.clock()
+                    pcall(refreshFriends)
+                end
+            end
+        end
+    end)
+
+    currentCat = prev
+end
+buildHomeCategory()
+
 local function buildUICategory()
     local prev = currentCat
     createCategory("ui", "UI", true, { order = 9998, noSelect = true, icon = "palette" })
@@ -3896,5 +4179,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v4.2 module ready")
+print("[BZ] Menu UI v4.3 module ready.")
 return API
