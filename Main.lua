@@ -3912,7 +3912,7 @@ local function buildHomeCategory()
         refreshFriends()
         local lastFriends = os.clock()
         while screenGui.Parent do
-            task.wait(1)
+            task.wait(5)
             local cat = categories["home"]
             if isOpen and cat and cat.body.Visible then
                 pcall(refreshServer)
@@ -4179,5 +4179,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v4.3 module ready.")
+print("[BZ] Menu UI v4.3 module ready")
 return API
