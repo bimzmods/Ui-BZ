@@ -3680,8 +3680,8 @@ local function buildHomeCategory()
         return l
     end
 
-    local function newCard(order, tint, tintAlpha, fixedH)
-        local f = Instance.new("Frame", body)
+    local function newCard(order, tint, tintAlpha, fixedH, parent)
+        local f = Instance.new("Frame", parent or body)
         f.Name = "HomeCard_" .. order
         f.LayoutOrder = order
         f.BackgroundColor3 = C.Surface
@@ -3733,10 +3733,15 @@ local function buildHomeCategory()
     local function newHeading(parent, title, desc, order)
         local h = Instance.new("Frame", parent)
         h.BackgroundTransparency = 1
-        h.Size = UDim2.new(1, 0, 0, 34)
+        h.Size = UDim2.new(1, 0, 0, 0)
+        h.AutomaticSize = Enum.AutomaticSize.Y
         h.LayoutOrder = order
         newLabel(h, title, 15, true, C.Text, UDim2.fromOffset(0, 0), UDim2.new(1, 0, 0, 18))
-        newLabel(h, desc, 11, false, C.TextDim, UDim2.fromOffset(0, 19), UDim2.new(1, 0, 0, 14))
+        local d = newLabel(h, desc, 11, false, C.TextDim, UDim2.fromOffset(0, 19), UDim2.new(1, 0, 0, 0))
+        d.AutomaticSize = Enum.AutomaticSize.Y
+        d.TextWrapped = true
+        d.TextTruncate = Enum.TextTruncate.None
+        d.TextYAlignment = Enum.TextYAlignment.Top
         return h
     end
 
@@ -3794,16 +3799,54 @@ local function buildHomeCategory()
         end
     end)
 
-    local _, serverBox = newCard(2, C.On, 0.78)
+    local row = Instance.new("Frame", body)
+    row.Name = "HomeRow"
+    row.LayoutOrder = 2
+    row.BackgroundTransparency = 1
+    row.BorderSizePixel = 0
+    row.Size = UDim2.new(1, 0, 0, 0)
+    row.AutomaticSize = Enum.AutomaticSize.Y
+    local rowLay = Instance.new("UIListLayout", row)
+    rowLay.FillDirection = Enum.FillDirection.Horizontal
+    rowLay.Padding = UDim.new(0, 8)
+    rowLay.SortOrder = Enum.SortOrder.LayoutOrder
+    rowLay.VerticalAlignment = Enum.VerticalAlignment.Top
+
+    local function newColumn(order)
+        local col = Instance.new("Frame", row)
+        col.LayoutOrder = order
+        col.BackgroundTransparency = 1
+        col.BorderSizePixel = 0
+        col.AutomaticSize = Enum.AutomaticSize.Y
+        local lay = Instance.new("UIListLayout", col)
+        lay.Padding = UDim.new(0, 8)
+        lay.SortOrder = Enum.SortOrder.LayoutOrder
+        return col
+    end
+    local colLeft, colRight = newColumn(1), newColumn(2)
+
+    local stacked
+    local function applyColumns()
+        local narrow = row.AbsoluteSize.X > 0 and row.AbsoluteSize.X < 340
+        if narrow == stacked then return end
+        stacked = narrow
+        rowLay.FillDirection = narrow and Enum.FillDirection.Vertical or Enum.FillDirection.Horizontal
+        colLeft.Size = narrow and UDim2.new(1, 0, 0, 0) or UDim2.new(0.56, -4, 0, 0)
+        colRight.Size = narrow and UDim2.new(1, 0, 0, 0) or UDim2.new(0.44, -4, 0, 0)
+    end
+    applyColumns()
+    row:GetPropertyChangedSignal("AbsoluteSize"):Connect(applyColumns)
+
+    local _, serverBox = newCard(1, C.On, 0.78, nil, colLeft)
     stackLayout(serverBox)
     newHeading(serverBox, "Server", "Information on the session you're currently in", 1)
     local serverGrid = newGrid(serverBox, 2)
     local setPlayers = newTile(serverGrid, 1, "Players", "-")
-    local setMax = newTile(serverGrid, 2, "Maximum Players", "-")
+    local setMax = newTile(serverGrid, 2, "Max Players", "-")
     local setPing = newTile(serverGrid, 3, "Latency", "-")
     local setRegion = newTile(serverGrid, 4, "Your Region", "-")
     local setTime = newTile(serverGrid, 5, "In server for", "00:00:00")
-    newTile(serverGrid, 6, "Join Script", "Tap to copy join script", function()
+    newTile(serverGrid, 6, "Join Script", "Tap to copy", function()
         local joinCode = string.format(
             'game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game:GetService("Players").LocalPlayer)',
             game.PlaceId, game.JobId)
@@ -3827,14 +3870,15 @@ local function buildHomeCategory()
     local canFiles = typeof(writefile) == "function" and typeof(readfile) == "function"
     local canClip = typeof(setclipboard) == "function" or typeof(toclipboard) == "function"
     local execTint = execName and C.On or Color3.fromRGB(255, 204, 0)
-    local _, execBox = newCard(3, execTint, 0.78)
+    local _, execBox = newCard(1, execTint, 0.78, nil, colRight)
     stackLayout(execBox)
     newHeading(execBox, "Executor", execName or "Executor tidak terdeteksi", 1)
-    newLabel(execBox, "Save config: " .. (canFiles and "OK" or "tidak ada")
-        .. "  ·  Clipboard: " .. (canClip and "OK" or "tidak ada"),
+    newLabel(execBox, "Save config: " .. (canFiles and "OK" or "tidak ada"),
         12, false, C.TextDim, UDim2.new(), UDim2.new(1, 0, 0, 16)).LayoutOrder = 2
+    newLabel(execBox, "Clipboard: " .. (canClip and "OK" or "tidak ada"),
+        12, false, C.TextDim, UDim2.new(), UDim2.new(1, 0, 0, 16)).LayoutOrder = 3
 
-    local _, friendsBox = newCard(4, C.Accent, 0.82)
+    local _, friendsBox = newCard(2, C.Accent, 0.82, nil, colRight)
     stackLayout(friendsBox)
     newHeading(friendsBox, "Friends", "Find out what your friends are currently doing", 1)
     local friendsGrid = newGrid(friendsBox, 2)
@@ -3843,10 +3887,10 @@ local function buildHomeCategory()
     local setOnline = newTile(friendsGrid, 3, "Online", "-")
     local setAll = newTile(friendsGrid, 4, "All", "-")
 
-    local discord, discordBox = newCard(5, C.Accent, 0.35, 70)
+    local discord, discordBox = newCard(2, C.Accent, 0.35, 70, colLeft)
     newLabel(discordBox, "Discord", 18, true, C.Text, UDim2.fromOffset(0, 2), UDim2.new(1, 0, 0, 24))
-    newLabel(discordBox, HOME_DISCORD_INVITE ~= "" and "Tap to copy the Discord invite" or "Invite belum diisi (HOME_DISCORD_INVITE)",
-        13, false, C.Text, UDim2.fromOffset(0, 28), UDim2.new(1, 0, 0, 18))
+    newLabel(discordBox, HOME_DISCORD_INVITE ~= "" and "Tap to join the Discord Server" or "Invite belum diisi (HOME_DISCORD_INVITE)",
+        12, false, C.Text, UDim2.fromOffset(0, 28), UDim2.new(1, 0, 0, 18))
     local discordBtn = Instance.new("TextButton", discord)
     discordBtn.Size = UDim2.fromScale(1, 1)
     discordBtn.BackgroundTransparency = 1
@@ -3875,7 +3919,7 @@ local function buildHomeCategory()
     local function refreshServer()
         local n = #Players:GetPlayers()
         setPlayers(n .. " playing")
-        setMax(Players.MaxPlayers .. " players can join this server")
+        setMax(Players.MaxPlayers .. " players")
         local ok, ping = pcall(function()
             return math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5)
         end)
@@ -4179,5 +4223,5 @@ buildDevTools()
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v4.3 module ready")
+print("[BZ] Menu UI v4.3 module ready.")
 return API
