@@ -156,6 +156,7 @@ task.spawn(function()
         frames = frames + 1
         acc = acc + dt
     end)
+    screenGui.Destroying:Connect(function() pcall(function() conn:Disconnect() end) end)
     while screenGui.Parent do
         task.wait(1.5)
         if logo.Visible and logoStats.Visible then
@@ -3073,6 +3074,49 @@ function API:Destroy()
     if screenGui then screenGui:Destroy() end
 end
 
+API._unloadHooks = {}
+API.Unloaded = false
+.
+function API:OnUnload(fn)
+    if type(fn) == "function" then table.insert(API._unloadHooks, fn) end
+    return fn
+end
+
+function API:Unload()
+    if API.Unloaded then return end
+    API.Unloaded = true
+
+    local toggles = {}
+    for _, e in pairs(registry) do
+        if e.kind == "toggle" and e.get and e.set then table.insert(toggles, e) end
+    end
+    for _, e in ipairs(toggles) do
+        pcall(function()
+            if e.get() then e.set(false) end
+        end)
+    end
+
+    for _, fn in ipairs(API._unloadHooks) do pcall(fn) end
+    table.clear(API._unloadHooks)
+
+    pcall(function() if activeSelectClose then activeSelectClose() end end)
+    listeningBind = nil
+
+    API:Destroy()
+
+    table.clear(registry)
+    table.clear(keybinds)
+    table.clear(categories)
+    selectedCat, currentCat = nil, nil
+    isOpen = false
+
+    setmetatable(API, {
+        __index = function() return function() end end,
+        __call = function(self) return self end,
+    })
+    print("[BZ] Menu unloaded.")
+end
+
 API.Instances = {
     ScreenGui = screenGui,
     Logo = logo,
@@ -3607,6 +3651,8 @@ local function buildUICategory()
     createCategory("ui", "UI", true, { order = 9998, noSelect = true, icon = "palette" })
     currentCat = "ui"
 
+    API:AddNote("Note: Unload completely removes this menu and every script loaded through it. All active toggles are switched off, all connections are disconnected and all UI is destroyed. To use it again you must re-execute the script. Saved configs are NOT deleted.")
+
     API:AddSection("Logo")
     API:AddSlider("ui_logo_size", "Logo Size", 32, 72, 44, function(v)
         logo.Size = UDim2.new(0, 0, 0, v)
@@ -3732,6 +3778,17 @@ local function buildUICategory()
     end)
 
     cfgStatus = API:AddNote("Status: siap")
+
+    API:AddSection("Unload")
+    local unloadArm = 0
+    API:AddTapToggleOneClick("ui_unload", "Unload", function()
+        if os.clock() - unloadArm > 4 then
+            unloadArm = os.clock()
+            API:Warn("Unload?", "Press Unload again within 4 seconds to remove everything", 4)
+            return
+        end
+        API:Unload()
+    end)
 
     currentCat = prev
 end
