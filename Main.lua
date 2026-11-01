@@ -600,10 +600,9 @@ local function langApplyOne(inst, prop)
     local rec = Lang.items[inst]
     if not rec then return end
     local want = Lang:Translate(rec[prop])
+    rec.applied[prop] = want
     if inst[prop] ~= want then
-        rec.busy = true
         inst[prop] = want
-        rec.busy = false
     end
 end
 
@@ -611,11 +610,15 @@ local function langTrack(inst)
     local isText = inst:IsA("TextLabel") or inst:IsA("TextButton")
     local isBox = inst:IsA("TextBox")
     if not (isText or isBox) or Lang.items[inst] then return end
-    local rec = { Text = isText and inst.Text or nil, PlaceholderText = isBox and inst.PlaceholderText or nil }
+    local rec = {
+        Text = isText and inst.Text or nil,
+        PlaceholderText = isBox and inst.PlaceholderText or nil,
+        applied = {},
+    }
     Lang.items[inst] = rec
     local function watch(prop)
         inst:GetPropertyChangedSignal(prop):Connect(function()
-            if rec.busy then return end
+            if inst[prop] == rec.applied[prop] then return end
             rec[prop] = inst[prop]
             langApplyOne(inst, prop)
         end)
@@ -661,6 +664,7 @@ function Lang:Set(code)
         pcall(writefile, CFG.LangFile, code)
     end
     self:Refresh()
+    if self.OnSet then pcall(self.OnSet, code) end
     return true
 end
 
@@ -4188,14 +4192,22 @@ local function buildUICategory()
         table.insert(langNames, Lang.Names[c])
         nameToCode[Lang.Names[c]] = c
     end
-    API:AddSelectMenu("ui_language", "Bahasa", langNames, Lang.Names[Lang.code], function(v)
-        local ok, how = Lang:Set(nameToCode[v] or "id")
+    local langSelect
+    langSelect = API:AddSelectMenu("ui_language", "Bahasa", langNames, Lang.Names[Lang.code], function(v)
+        local code = nameToCode[v] or "id"
+        if code == Lang.code then return end
+        local ok, how = Lang:Set(code)
         if ok then
             API:Success("Bahasa", v, 2)
         else
             API:Error("Bahasa", tostring(how), 4)
         end
     end)
+    langSelect.noSave = true
+    Lang.OnSet = function(code)
+        local nm = Lang.Names[code]
+        if nm and langSelect.get() ~= nm then langSelect.set(nm, true) end
+    end
     API:AddNote("Terjemahan dimuat dari JSON (link raw). Jika offline, memakai cache terakhir.")
 
     API:AddSection("Thema")
@@ -4450,5 +4462,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.4 module ready")
+print("[BZ] Menu UI v4.4 module ready.")
 return API
