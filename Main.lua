@@ -496,8 +496,9 @@ function API._connect(signal, fn)
     return c
 end
 
+
 local Lang = { code = "id", packs = {}, loaded = false, roots = {}, items = setmetatable({}, { __mode = "k" }) }
-do 
+do
 
 local function langReadFile(path)
     if typeof(isfile) ~= "function" or typeof(readfile) ~= "function" then return nil end
@@ -662,6 +663,8 @@ function Lang:Set(code)
     end
     self:Refresh()
     return true
+end
+
 end
 
 function Lang.T(text) return Lang:Translate(tostring(text)) end
@@ -4438,5 +4441,5 @@ end
 
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v4.4 module ready.")
+print("[BZ] Menu UI v4.4 module ready")
 return API
