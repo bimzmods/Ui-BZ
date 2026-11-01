@@ -1,0 +1,421 @@
+{
+  "_info": "BZ Menu UI - bahasa. Key strings = teks asli (Indonesia). id = bawaan skrip, tidak perlu di JSON.",
+  "languages": {
+    "en": {
+      "name": "English",
+      "strings": {
+        "Bahasa": "Language",
+        "Thema": "Theme",
+        "Notifikasi": "Notifications",
+        "Posisi Notifikasi": "Notification Position",
+        "Kanan Atas": "Top Right",
+        "Kiri Atas": "Top Left",
+        "Atas": "Top",
+        "Bawah": "Bottom",
+        "Ungu": "Purple",
+        "Kuning": "Yellow",
+        "Merah": "Red",
+        "Terjemahan dimuat dari JSON (link raw). Jika offline, memakai cache terakhir.": "Translations are loaded from JSON (raw link). If offline, the last cache is used.",
+        "Logo Transparan (%)": "Logo Transparency (%)",
+        "Tampilkan FPS & Ping": "Show FPS & Ping",
+        "Keyboard": "Keyboard",
+        "Buka/Tutup Menu": "Open/Close Menu",
+        "Klik kotak lalu tekan tombol baru.": "Click the box, then press a new key.",
+        "Pilih Config": "Select Config",
+        "Nama Baru": "New Name",
+        "contoh: legit": "example: legit",
+        "Config tersimpan": "Config saved",
+        "Gagal menyimpan config": "Failed to save config",
+        "Belum ada config tersimpan": "No saved config yet",
+        "Config dimuat": "Config loaded",
+        "Gagal memuat config": "Failed to load config",
+        "Config dibuat": "Config created",
+        "Gagal membuat config": "Failed to create config",
+        "Hapus config?": "Delete config?",
+        "Config dihapus": "Config deleted",
+        "Gagal menghapus config": "Failed to delete config",
+        "Status: siap": "Status: ready",
+        "belum ada config, Save atau Create dulu": "no config yet, Save or Create one first",
+        "pilih config dulu": "select a config first",
+        "Tersalin": "Copied",
+        "Gagal menyalin": "Failed to copy",
+        "Executor tidak support clipboard": "Executor does not support clipboard",
+        "Executor tidak terdeteksi": "Executor not detected",
+        "tidak ada": "none",
+        "Invite belum diisi (HOME_DISCORD_INVITE)": "Invite not set (HOME_DISCORD_INVITE)",
+        "Isi HOME_DISCORD_INVITE di kode menu dulu": "Fill HOME_DISCORD_INVITE in the menu code first",
+        "Koordinat": "Coordinates",
+        "Posisi: -": "Position: -",
+        "Copy sebagai Vector3": "Copy as Vector3",
+        "✘ Karakter belum ada": "✘ Character not found",
+        "✘ Executor tidak support clipboard": "✘ Executor does not support clipboard",
+        "✘ HWID tidak tersedia di executor ini": "✘ HWID is not available in this executor",
+        "HWID tidak tersedia": "HWID not available",
+        "Posisi: karakter belum ada": "Position: character not found",
+        "Dibuat": "Created",
+        "Dimuat": "Loaded",
+        "Dihapus": "Deleted",
+        "Tersimpan": "Saved",
+        "tidak tersedia": "not available"
+      },
+      "patterns": [
+        {
+          "match": "^(%S+) Tersimpan: (.+)$",
+          "text": "%1 Saved: %2"
+        },
+        {
+          "match": "^(%S+) Dimuat: (.+)$",
+          "text": "%1 Loaded: %2"
+        },
+        {
+          "match": "^(%S+) Dibuat: (.+)$",
+          "text": "%1 Created: %2"
+        },
+        {
+          "match": "^(%S+) Dihapus: (.+)$",
+          "text": "%1 Deleted: %2"
+        },
+        {
+          "match": "^(%S+) Tersalin: (.+)$",
+          "text": "%1 Copied: %2"
+        },
+        {
+          "match": "^Folder: (.-)\nConfig disimpan per Game ID %((.-)%)%.$",
+          "text": "Folder: %1\nConfigs are saved per Game ID (%2)."
+        },
+        {
+          "match": "^Tekan Delete lagi %(4 detik%) untuk menghapus \"(.+)\"$",
+          "text": "Press Delete again (4 seconds) to delete \"%1\""
+        },
+        {
+          "match": "^Tekan Delete sekali lagi untuk menghapus (.+)$",
+          "text": "Press Delete once more to delete %1"
+        },
+        {
+          "match": "^Posisi: X (%S+)%s+Y (%S+)%s+Z (%S+)$",
+          "text": "Position: X %1  Y %2  Z %3"
+        },
+        {
+          "match": "^HWID: tidak tersedia$",
+          "text": "HWID: not available"
+        },
+        {
+          "match": "^Save config: tidak ada$",
+          "text": "Save config: none"
+        }
+      ]
+    },
+    "es": {
+      "name": "Español",
+      "strings": {
+        "Bahasa": "Idioma",
+        "Thema": "Tema",
+        "Notifikasi": "Notificaciones",
+        "Posisi Notifikasi": "Posición de notificaciones",
+        "Kanan Atas": "Arriba derecha",
+        "Kiri Atas": "Arriba izquierda",
+        "Atas": "Arriba",
+        "Bawah": "Abajo",
+        "Ungu": "Morado",
+        "Kuning": "Amarillo",
+        "Merah": "Rojo",
+        "Terjemahan dimuat dari JSON (link raw). Jika offline, memakai cache terakhir.": "Las traducciones se cargan desde JSON (enlace raw). Sin conexión, se usa la última caché.",
+        "Logo Transparan (%)": "Transparencia del logo (%)",
+        "Tampilkan FPS & Ping": "Mostrar FPS y Ping",
+        "Keyboard": "Teclado",
+        "Buka/Tutup Menu": "Abrir/Cerrar menú",
+        "Klik kotak lalu tekan tombol baru.": "Haz clic en el cuadro y pulsa una tecla nueva.",
+        "Pilih Config": "Seleccionar config",
+        "Nama Baru": "Nombre nuevo",
+        "contoh: legit": "ejemplo: legit",
+        "Config tersimpan": "Config guardada",
+        "Gagal menyimpan config": "Error al guardar la config",
+        "Belum ada config tersimpan": "Aún no hay config guardada",
+        "Config dimuat": "Config cargada",
+        "Gagal memuat config": "Error al cargar la config",
+        "Config dibuat": "Config creada",
+        "Gagal membuat config": "Error al crear la config",
+        "Hapus config?": "¿Eliminar config?",
+        "Config dihapus": "Config eliminada",
+        "Gagal menghapus config": "Error al eliminar la config",
+        "Status: siap": "Estado: listo",
+        "belum ada config, Save atau Create dulu": "aún no hay config, guarda o crea una primero",
+        "pilih config dulu": "selecciona una config primero",
+        "Tersalin": "Copiado",
+        "Gagal menyalin": "Error al copiar",
+        "Executor tidak support clipboard": "El executor no admite portapapeles",
+        "Executor tidak terdeteksi": "Executor no detectado",
+        "tidak ada": "ninguno",
+        "Invite belum diisi (HOME_DISCORD_INVITE)": "Invitación no configurada (HOME_DISCORD_INVITE)",
+        "Isi HOME_DISCORD_INVITE di kode menu dulu": "Rellena HOME_DISCORD_INVITE en el código del menú primero",
+        "Koordinat": "Coordenadas",
+        "Posisi: -": "Posición: -",
+        "Copy sebagai Vector3": "Copiar como Vector3",
+        "✘ Karakter belum ada": "✘ Personaje no encontrado",
+        "✘ Executor tidak support clipboard": "✘ El executor no admite portapapeles",
+        "✘ HWID tidak tersedia di executor ini": "✘ HWID no disponible en este executor",
+        "HWID tidak tersedia": "HWID no disponible",
+        "Posisi: karakter belum ada": "Posición: personaje no encontrado",
+        "Dibuat": "Creado",
+        "Dimuat": "Cargado",
+        "Dihapus": "Eliminado",
+        "Tersimpan": "Guardado",
+        "tidak tersedia": "no disponible"
+      },
+      "patterns": [
+        {
+          "match": "^(%S+) Tersimpan: (.+)$",
+          "text": "%1 Guardado: %2"
+        },
+        {
+          "match": "^(%S+) Dimuat: (.+)$",
+          "text": "%1 Cargado: %2"
+        },
+        {
+          "match": "^(%S+) Dibuat: (.+)$",
+          "text": "%1 Creado: %2"
+        },
+        {
+          "match": "^(%S+) Dihapus: (.+)$",
+          "text": "%1 Eliminado: %2"
+        },
+        {
+          "match": "^(%S+) Tersalin: (.+)$",
+          "text": "%1 Copiado: %2"
+        },
+        {
+          "match": "^Folder: (.-)\nConfig disimpan per Game ID %((.-)%)%.$",
+          "text": "Carpeta: %1\nLas configs se guardan por Game ID (%2)."
+        },
+        {
+          "match": "^Tekan Delete lagi %(4 detik%) untuk menghapus \"(.+)\"$",
+          "text": "Pulsa Delete otra vez (4 segundos) para eliminar \"%1\""
+        },
+        {
+          "match": "^Tekan Delete sekali lagi untuk menghapus (.+)$",
+          "text": "Pulsa Delete una vez más para eliminar %1"
+        },
+        {
+          "match": "^Posisi: X (%S+)%s+Y (%S+)%s+Z (%S+)$",
+          "text": "Posición: X %1  Y %2  Z %3"
+        },
+        {
+          "match": "^HWID: tidak tersedia$",
+          "text": "HWID: no disponible"
+        },
+        {
+          "match": "^Save config: tidak ada$",
+          "text": "Config guardada: ninguna"
+        }
+      ]
+    },
+    "pt": {
+      "name": "Português",
+      "strings": {
+        "Bahasa": "Idioma",
+        "Thema": "Tema",
+        "Notifikasi": "Notificações",
+        "Posisi Notifikasi": "Posição das notificações",
+        "Kanan Atas": "Superior direito",
+        "Kiri Atas": "Superior esquerdo",
+        "Atas": "Superior",
+        "Bawah": "Inferior",
+        "Ungu": "Roxo",
+        "Kuning": "Amarelo",
+        "Merah": "Vermelho",
+        "Terjemahan dimuat dari JSON (link raw). Jika offline, memakai cache terakhir.": "As traduções são carregadas de um JSON (link raw). Offline, usa o último cache.",
+        "Logo Transparan (%)": "Transparência do logo (%)",
+        "Tampilkan FPS & Ping": "Mostrar FPS e Ping",
+        "Keyboard": "Teclado",
+        "Buka/Tutup Menu": "Abrir/Fechar menu",
+        "Klik kotak lalu tekan tombol baru.": "Clique na caixa e pressione uma nova tecla.",
+        "Pilih Config": "Selecionar config",
+        "Nama Baru": "Novo nome",
+        "contoh: legit": "exemplo: legit",
+        "Config tersimpan": "Config salva",
+        "Gagal menyimpan config": "Falha ao salvar a config",
+        "Belum ada config tersimpan": "Ainda não há config salva",
+        "Config dimuat": "Config carregada",
+        "Gagal memuat config": "Falha ao carregar a config",
+        "Config dibuat": "Config criada",
+        "Gagal membuat config": "Falha ao criar a config",
+        "Hapus config?": "Excluir config?",
+        "Config dihapus": "Config excluída",
+        "Gagal menghapus config": "Falha ao excluir a config",
+        "Status: siap": "Status: pronto",
+        "belum ada config, Save atau Create dulu": "ainda não há config, salve ou crie uma primeiro",
+        "pilih config dulu": "selecione uma config primeiro",
+        "Tersalin": "Copiado",
+        "Gagal menyalin": "Falha ao copiar",
+        "Executor tidak support clipboard": "O executor não suporta área de transferência",
+        "Executor tidak terdeteksi": "Executor não detectado",
+        "tidak ada": "nenhum",
+        "Invite belum diisi (HOME_DISCORD_INVITE)": "Convite não definido (HOME_DISCORD_INVITE)",
+        "Isi HOME_DISCORD_INVITE di kode menu dulu": "Preencha HOME_DISCORD_INVITE no código do menu primeiro",
+        "Koordinat": "Coordenadas",
+        "Posisi: -": "Posição: -",
+        "Copy sebagai Vector3": "Copiar como Vector3",
+        "✘ Karakter belum ada": "✘ Personagem não encontrado",
+        "✘ Executor tidak support clipboard": "✘ O executor não suporta área de transferência",
+        "✘ HWID tidak tersedia di executor ini": "✘ HWID não disponível neste executor",
+        "HWID tidak tersedia": "HWID não disponível",
+        "Posisi: karakter belum ada": "Posição: personagem não encontrado",
+        "Dibuat": "Criado",
+        "Dimuat": "Carregado",
+        "Dihapus": "Excluído",
+        "Tersimpan": "Salvo",
+        "tidak tersedia": "não disponível"
+      },
+      "patterns": [
+        {
+          "match": "^(%S+) Tersimpan: (.+)$",
+          "text": "%1 Salvo: %2"
+        },
+        {
+          "match": "^(%S+) Dimuat: (.+)$",
+          "text": "%1 Carregado: %2"
+        },
+        {
+          "match": "^(%S+) Dibuat: (.+)$",
+          "text": "%1 Criado: %2"
+        },
+        {
+          "match": "^(%S+) Dihapus: (.+)$",
+          "text": "%1 Excluído: %2"
+        },
+        {
+          "match": "^(%S+) Tersalin: (.+)$",
+          "text": "%1 Copiado: %2"
+        },
+        {
+          "match": "^Folder: (.-)\nConfig disimpan per Game ID %((.-)%)%.$",
+          "text": "Pasta: %1\nAs configs são salvas por Game ID (%2)."
+        },
+        {
+          "match": "^Tekan Delete lagi %(4 detik%) untuk menghapus \"(.+)\"$",
+          "text": "Pressione Delete novamente (4 segundos) para excluir \"%1\""
+        },
+        {
+          "match": "^Tekan Delete sekali lagi untuk menghapus (.+)$",
+          "text": "Pressione Delete mais uma vez para excluir %1"
+        },
+        {
+          "match": "^Posisi: X (%S+)%s+Y (%S+)%s+Z (%S+)$",
+          "text": "Posição: X %1  Y %2  Z %3"
+        },
+        {
+          "match": "^HWID: tidak tersedia$",
+          "text": "HWID: não disponível"
+        },
+        {
+          "match": "^Save config: tidak ada$",
+          "text": "Config salva: nenhuma"
+        }
+      ]
+    },
+    "fr": {
+      "name": "Français",
+      "strings": {
+        "Bahasa": "Langue",
+        "Thema": "Thème",
+        "Notifikasi": "Notifications",
+        "Posisi Notifikasi": "Position des notifications",
+        "Kanan Atas": "Haut droite",
+        "Kiri Atas": "Haut gauche",
+        "Atas": "Haut",
+        "Bawah": "Bas",
+        "Ungu": "Violet",
+        "Kuning": "Jaune",
+        "Merah": "Rouge",
+        "Terjemahan dimuat dari JSON (link raw). Jika offline, memakai cache terakhir.": "Les traductions sont chargées depuis un JSON (lien raw). Hors ligne, le dernier cache est utilisé.",
+        "Logo Transparan (%)": "Transparence du logo (%)",
+        "Tampilkan FPS & Ping": "Afficher FPS et Ping",
+        "Keyboard": "Clavier",
+        "Buka/Tutup Menu": "Ouvrir/Fermer le menu",
+        "Klik kotak lalu tekan tombol baru.": "Clique sur la case puis appuie sur une nouvelle touche.",
+        "Pilih Config": "Choisir la config",
+        "Nama Baru": "Nouveau nom",
+        "contoh: legit": "exemple : legit",
+        "Config tersimpan": "Config enregistrée",
+        "Gagal menyimpan config": "Échec de l'enregistrement de la config",
+        "Belum ada config tersimpan": "Aucune config enregistrée",
+        "Config dimuat": "Config chargée",
+        "Gagal memuat config": "Échec du chargement de la config",
+        "Config dibuat": "Config créée",
+        "Gagal membuat config": "Échec de la création de la config",
+        "Hapus config?": "Supprimer la config ?",
+        "Config dihapus": "Config supprimée",
+        "Gagal menghapus config": "Échec de la suppression de la config",
+        "Status: siap": "Statut : prêt",
+        "belum ada config, Save atau Create dulu": "pas encore de config, enregistre ou crée-en une d'abord",
+        "pilih config dulu": "choisis d'abord une config",
+        "Tersalin": "Copié",
+        "Gagal menyalin": "Échec de la copie",
+        "Executor tidak support clipboard": "L'executor ne prend pas en charge le presse-papiers",
+        "Executor tidak terdeteksi": "Executor non détecté",
+        "tidak ada": "aucun",
+        "Invite belum diisi (HOME_DISCORD_INVITE)": "Invitation non définie (HOME_DISCORD_INVITE)",
+        "Isi HOME_DISCORD_INVITE di kode menu dulu": "Renseigne d'abord HOME_DISCORD_INVITE dans le code du menu",
+        "Koordinat": "Coordonnées",
+        "Posisi: -": "Position : -",
+        "Copy sebagai Vector3": "Copier en Vector3",
+        "✘ Karakter belum ada": "✘ Personnage introuvable",
+        "✘ Executor tidak support clipboard": "✘ L'executor ne prend pas en charge le presse-papiers",
+        "✘ HWID tidak tersedia di executor ini": "✘ HWID indisponible dans cet executor",
+        "HWID tidak tersedia": "HWID indisponible",
+        "Posisi: karakter belum ada": "Position : personnage introuvable",
+        "Dibuat": "Créé",
+        "Dimuat": "Chargé",
+        "Dihapus": "Supprimé",
+        "Tersimpan": "Enregistré",
+        "tidak tersedia": "indisponible"
+      },
+      "patterns": [
+        {
+          "match": "^(%S+) Tersimpan: (.+)$",
+          "text": "%1 Enregistré : %2"
+        },
+        {
+          "match": "^(%S+) Dimuat: (.+)$",
+          "text": "%1 Chargé : %2"
+        },
+        {
+          "match": "^(%S+) Dibuat: (.+)$",
+          "text": "%1 Créé : %2"
+        },
+        {
+          "match": "^(%S+) Dihapus: (.+)$",
+          "text": "%1 Supprimé : %2"
+        },
+        {
+          "match": "^(%S+) Tersalin: (.+)$",
+          "text": "%1 Copié : %2"
+        },
+        {
+          "match": "^Folder: (.-)\nConfig disimpan per Game ID %((.-)%)%.$",
+          "text": "Dossier : %1\nLes configs sont enregistrées par Game ID (%2)."
+        },
+        {
+          "match": "^Tekan Delete lagi %(4 detik%) untuk menghapus \"(.+)\"$",
+          "text": "Appuie encore sur Delete (4 secondes) pour supprimer « %1 »"
+        },
+        {
+          "match": "^Tekan Delete sekali lagi untuk menghapus (.+)$",
+          "text": "Appuie encore une fois sur Delete pour supprimer %1"
+        },
+        {
+          "match": "^Posisi: X (%S+)%s+Y (%S+)%s+Z (%S+)$",
+          "text": "Position : X %1  Y %2  Z %3"
+        },
+        {
+          "match": "^HWID: tidak tersedia$",
+          "text": "HWID : indisponible"
+        },
+        {
+          "match": "^Save config: tidak ada$",
+          "text": "Config enregistrée : aucune"
+        }
+      ]
+    }
+  }
+}
