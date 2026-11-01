@@ -46,7 +46,7 @@ local CFG = {
     LangFile = "BZ Menu/lang.txt",
     LangCache = "BZ Menu/cache/lang_pack.json",
     CacheDir = "BZ Menu/cache",
-    ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json", 
+    ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json",
 }
 
 CFG.GameKey = tostring(game.GameId ~= 0 and game.GameId or game.PlaceId)
@@ -495,7 +495,6 @@ function API._connect(signal, fn)
     table.insert(API._conns, c)
     return c
 end
-
 
 local Lang = { code = "id", packs = {}, loaded = false, roots = {}, items = setmetatable({}, { __mode = "k" }) }
 do
@@ -4439,7 +4438,19 @@ function API:SetLangURL(url)
     return true
 end
 
-setmetatable(API, {__call = function(self) return self end})
+local missingSeen = {}
+setmetatable(API, {
+    __call = function(self) return self end,
+    __index = function(_, key)
+        if type(key) ~= "string" or key:sub(1, 1) == "_" then return nil end
+        if not missingSeen[key] then
+            missingSeen[key] = true
+            warn("[BZ] Fungsi API tidak ada: " .. key)
+            pcall(function() API:Warn("Fungsi API tidak ada", tostring(key), 5) end)
+        end
+        return function() return nil end
+    end,
+})
 
-print("[BZ] Menu UI v4.4 module ready")
+print("[BZ] Menu UI v4.4 module ready.")
 return API
