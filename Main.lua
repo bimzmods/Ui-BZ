@@ -46,7 +46,7 @@ local CFG = {
     LangFile = "BZ Menu/lang.txt",
     LangCache = "BZ Menu/cache/lang_pack.json",
     CacheDir = "BZ Menu/cache",
-    ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json",
+    ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json", 
 }
 
 CFG.GameKey = tostring(game.GameId ~= 0 and game.GameId or game.PlaceId)
@@ -664,17 +664,15 @@ function Lang:Set(code)
     return true
 end
 
-end
-
-function Lang.T(text) return Lang:Translate(tostring(text)) end
-
-do
     local saved = langReadFile(CFG.LangFile)
     local sc = saved and saved:match("^%s*(%a%a)")
     if sc and sc ~= "id" then
         task.spawn(function() Lang:Set(sc) end)
     end
 end
+
+function Lang.T(text) return Lang:Translate(tostring(text)) end
+
 
 local categories = {}
 local categoryOrder = 0
@@ -4452,5 +4450,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.4 module ready.")
+print("[BZ] Menu UI v4.4 module ready")
 return API
