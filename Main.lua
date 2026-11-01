@@ -42,6 +42,9 @@ local CFG = {
     ScreenPad = 10,
     LogoStart = UDim2.new(0, 40, 0.5, -28),
     ConfigDir = "BZ Menu",
+    LangURL = "https://raw.githubusercontent.com/bimzmods/Ui-BZ/main/lang/lang.json",
+    LangFile = "BZ Menu/lang.txt",
+    LangCache = "BZ Menu/cache/lang_pack.json",
     CacheDir = "BZ Menu/cache",
     ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json", 
 }
@@ -491,6 +494,184 @@ function API._connect(signal, fn)
     local c = signal:Connect(fn)
     table.insert(API._conns, c)
     return c
+end
+
+local Lang = { code = "id", packs = {}, loaded = false, roots = {}, items = setmetatable({}, { __mode = "k" }) }
+do 
+
+local function langReadFile(path)
+    if typeof(isfile) ~= "function" or typeof(readfile) ~= "function" then return nil end
+    local okf, exists = pcall(isfile, path)
+    if not okf or not exists then return nil end
+    local okr, raw = pcall(readfile, path)
+    return okr and raw or nil
+end
+
+local function langHttp(url)
+    local ok, res = pcall(function() return game:HttpGet(url) end)
+    if ok and type(res) == "string" and res ~= "" then return res end
+    local req = (typeof(request) == "function" and request)
+        or (typeof(http_request) == "function" and http_request)
+        or (typeof(syn) == "table" and typeof(syn.request) == "function" and syn.request)
+    if req then
+        local okr, r = pcall(req, { Url = url, Method = "GET" })
+        if okr and type(r) == "table" and r.StatusCode == 200 and type(r.Body) == "string" then
+            return r.Body
+        end
+    end
+    return nil
+end
+
+local function langBuildPack(src)
+    local strings = type(src.strings) == "table" and src.strings or {}
+    local dict, pats = {}, {}
+    for k, v in pairs(strings) do
+        if type(k) == "string" and type(v) == "string" then dict[string.lower(k)] = v end
+    end
+    if type(src.patterns) == "table" then
+        for _, pt in ipairs(src.patterns) do
+            if type(pt) == "table" and type(pt.match) == "string" and type(pt.text) == "string" then
+                table.insert(pats, pt)
+            end
+        end
+    end
+    return { dict = dict, patterns = pats }
+end
+
+local function langParse(raw)
+    if type(raw) ~= "string" then return false end
+    raw = raw:gsub("^\239\187\191", "")
+    local ok, data = pcall(function() return HttpService:JSONDecode(raw) end)
+    if not ok or type(data) ~= "table" then return false end
+    local packs, n = {}, 0
+    if type(data.languages) == "table" then
+        for code, src in pairs(data.languages) do
+            if type(src) == "table" then packs[string.lower(code)] = langBuildPack(src); n = n + 1 end
+        end
+    elseif type(data.strings) == "table" then
+        packs.en = langBuildPack(data); n = 1
+    end
+    if n == 0 then return false end
+    Lang.packs = packs
+    return true
+end
+
+function Lang:Fetch()
+    local raw = langHttp(CFG.LangURL)
+    if raw and langParse(raw) then
+        self.loaded = true
+        if typeof(writefile) == "function" then
+            ensureDir(CFG.ConfigDir)
+            ensureDir(CFG.CacheDir)
+            pcall(writefile, CFG.LangCache, raw)
+        end
+        return true, "online"
+    end
+    local cached = langReadFile(CFG.LangCache)
+    if cached and langParse(cached) then
+        self.loaded = true
+        return true, "cache"
+    end
+    return false, "gagal memuat JSON bahasa"
+end
+
+local function hasLetters(t) return t:find("%a") ~= nil end
+
+function Lang:Translate(src)
+    if self.code == "id" or type(src) ~= "string" or src == "" then return src end
+    local pack = self.packs[self.code]
+    if not pack then return src end
+    local hit = pack.dict[string.lower(src)]
+    if not hit then
+        for _, p in ipairs(pack.patterns) do
+            local caps = { string.match(src, p.match) }
+            if #caps > 0 then
+                hit = p.text:gsub("%%(%d)", function(n) return caps[tonumber(n)] or "" end)
+                break
+            end
+        end
+    end
+    if not hit then return src end
+    if hasLetters(src) and src == string.upper(src) then return string.upper(hit) end
+    return hit
+end
+
+local function langApplyOne(inst, prop)
+    local rec = Lang.items[inst]
+    if not rec then return end
+    local want = Lang:Translate(rec[prop])
+    if inst[prop] ~= want then
+        rec.busy = true
+        inst[prop] = want
+        rec.busy = false
+    end
+end
+
+local function langTrack(inst)
+    local isText = inst:IsA("TextLabel") or inst:IsA("TextButton")
+    local isBox = inst:IsA("TextBox")
+    if not (isText or isBox) or Lang.items[inst] then return end
+    local rec = { Text = isText and inst.Text or nil, PlaceholderText = isBox and inst.PlaceholderText or nil }
+    Lang.items[inst] = rec
+    local function watch(prop)
+        inst:GetPropertyChangedSignal(prop):Connect(function()
+            if rec.busy then return end
+            rec[prop] = inst[prop]
+            langApplyOne(inst, prop)
+        end)
+        langApplyOne(inst, prop)
+    end
+    if isText then watch("Text") end
+    if isBox then watch("PlaceholderText") end
+end
+
+function Lang:Track(root)
+    if not root or self.roots[root] then return end
+    self.roots[root] = true
+    for _, d in ipairs(root:GetDescendants()) do langTrack(d) end
+    root.DescendantAdded:Connect(langTrack)
+end
+
+function Lang:Refresh()
+    for inst, rec in pairs(self.items) do
+        if inst.Parent then
+            if rec.Text ~= nil then langApplyOne(inst, "Text") end
+            if rec.PlaceholderText ~= nil then langApplyOne(inst, "PlaceholderText") end
+        end
+    end
+end
+
+Lang.Names = { id = "Indonesia", en = "English", es = "Español", pt = "Português", fr = "Français" }
+Lang.Order = { "id", "en", "es", "pt", "fr" }
+
+function Lang:Set(code)
+    code = string.lower(tostring(code or "id"))
+    for c, name in pairs(self.Names) do
+        if tostring(code) == string.lower(name) then code = c end
+    end
+    if not self.Names[code] then code = "id" end
+    if code ~= "id" and not self.packs[code] then
+        local ok, how = self:Fetch()
+        if not ok then return false, how end
+        if not self.packs[code] then return false, "bahasa tidak ada di JSON: " .. code end
+    end
+    self.code = code
+    if typeof(writefile) == "function" then
+        ensureDir(CFG.ConfigDir)
+        pcall(writefile, CFG.LangFile, code)
+    end
+    self:Refresh()
+    return true
+end
+
+function Lang.T(text) return Lang:Translate(tostring(text)) end
+
+do
+    local saved = langReadFile(CFG.LangFile)
+    local sc = saved and saved:match("^%s*(%a%a)")
+    if sc and sc ~= "id" then
+        task.spawn(function() Lang:Set(sc) end)
+    end
 end
 
 local categories = {}
@@ -1904,6 +2085,7 @@ local function getPickerGui()
     pickerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     local okp = pcall(function() pickerGui.Parent = screenGui.Parent end)
     if not okp or not pickerGui.Parent then pickerGui.Parent = player:WaitForChild("PlayerGui") end
+    Lang:Track(pickerGui)
     return pickerGui
 end
 
@@ -3593,7 +3775,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v4.0"
+local BZ_VERSION = "v4.4"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
 local logoSizeValue = 44
 local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
@@ -4000,6 +4182,22 @@ local function buildUICategory()
         logoStats.Visible = on
     end, "switch")
 
+    API:AddSection("Bahasa")
+    local langNames, nameToCode = {}, {}
+    for _, c in ipairs(Lang.Order) do
+        table.insert(langNames, Lang.Names[c])
+        nameToCode[Lang.Names[c]] = c
+    end
+    API:AddSelectMenu("ui_language", "Bahasa", langNames, Lang.Names[Lang.code], function(v)
+        local ok, how = Lang:Set(nameToCode[v] or "id")
+        if ok then
+            API:Success("Bahasa", v, 2)
+        else
+            API:Error("Bahasa", tostring(how), 4)
+        end
+    end)
+    API:AddNote("Terjemahan dimuat dari JSON (link raw). Jika offline, memakai cache terakhir.")
+
     API:AddSection("Thema")
     API:AddSelectMenu("ui_theme", "Thema", THEME_ORDER, "Ungu", function(v)
         API:SetTheme(v)
@@ -4221,7 +4419,24 @@ local function buildDevTools()
 end
 buildDevTools()
 
+Lang:Track(screenGui)
+Lang:Refresh()
+
+API.Lang = Lang
+function API:T(text) return Lang.T(text) end
+function API:SetLanguage(code) return Lang:Set(code) end
+function API:GetLanguage() return Lang.code end
+function API:GetLanguages() return Lang.Names end
+function API:SetLangURL(url)
+    if type(url) == "string" and url ~= "" then
+        CFG.LangURL = url
+        Lang.loaded = false
+        if Lang.code == "en" then return Lang:Set("en") end
+    end
+    return true
+end
+
 setmetatable(API, {__call = function(self) return self end})
 
-print("[BZ] Menu UI v4.3 module ready.")
+print("[BZ] Menu UI v4.4 module ready.")
 return API
