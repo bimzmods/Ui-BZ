@@ -368,7 +368,7 @@ tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local tabPad = Instance.new("UIPadding", tabBar)
 tabPad.PaddingTop = UDim.new(0, 8)
-tabPad.PaddingBottom = UDim.new(0, 64)
+tabPad.PaddingBottom = UDim.new(0, 8)
 tabPad.PaddingLeft = UDim.new(0, 8)
 tabPad.PaddingRight = UDim.new(0, 8)
 
@@ -407,7 +407,8 @@ profile.Name = "Profile"
 profile.AnchorPoint = Vector2.new(0, 1)
 profile.Position = UDim2.new(0, 0, 1, 0)
 profile.Size = UDim2.fromOffset(SIDE_W, PROFILE_H)
-profile.BackgroundTransparency = 1
+profile.BackgroundColor3 = C.Bg
+profile.BackgroundTransparency = 0
 profile.BorderSizePixel = 0
 profile.ClipsDescendants = true
 profile.Visible = false
@@ -440,7 +441,7 @@ end)
 
 profName = Instance.new("TextLabel", profile)
 profName.Position = UDim2.fromOffset(52, 12)
-profName.Size = UDim2.new(1, -58, 0, 16)
+profName.Size = UDim2.new(1, -90, 0, 16)
 profName.BackgroundTransparency = 1
 profName.Text = player.DisplayName
 profName.Font = FontBold
@@ -450,7 +451,7 @@ profName.TextXAlignment = Enum.TextXAlignment.Left
 profName.TextTruncate = Enum.TextTruncate.AtEnd
 profUser = Instance.new("TextLabel", profile)
 profUser.Position = UDim2.fromOffset(52, 28)
-profUser.Size = UDim2.new(1, -58, 0, 15)
+profUser.Size = UDim2.new(1, -90, 0, 15)
 profUser.BackgroundTransparency = 1
 profUser.Text = "@" .. player.Name
 profUser.Font = Font
@@ -970,7 +971,7 @@ end
 local function relayout(animate)
     local w = 0
     if tabBar.Visible then w = sideCollapsed and SIDE_C or SIDE_W end
-    local sideSize = UDim2.new(0, w, 1, -CFG.HeaderH)
+    local sideSize = UDim2.new(0, w, 1, -CFG.HeaderH - (tabBar.Visible and PROFILE_H or 0))
     local contentPos = UDim2.fromOffset(w, CFG.HeaderH)
     local contentSize = UDim2.new(1, -w, 1, -CFG.HeaderH)
     sideLine.Visible = tabBar.Visible
@@ -988,6 +989,63 @@ local function relayout(animate)
         contentArea.Size = contentSize
         sideLine.Position = contentPos
         profile.Size = profSize
+    end
+end
+
+do
+    local realName, realUser = player.DisplayName, "@" .. player.Name
+    local censored = false
+    local eyeBtn = Instance.new("TextButton", profile)
+    eyeBtn.Name = "EyeBtn"
+    eyeBtn.AnchorPoint = Vector2.new(1, 0.5)
+    eyeBtn.Position = UDim2.new(1, -8, 0.5, 2)
+    eyeBtn.Size = UDim2.fromOffset(28, 28)
+    eyeBtn.BackgroundColor3 = C.Surface2
+    eyeBtn.BackgroundTransparency = 1
+    eyeBtn.AutoButtonColor = false
+    eyeBtn.Text = ""
+    Instance.new("UICorner", eyeBtn).CornerRadius = UDim.new(0, 8)
+    local eyeImg = Instance.new("ImageLabel", eyeBtn)
+    eyeImg.AnchorPoint = Vector2.new(0.5, 0.5)
+    eyeImg.Position = UDim2.fromScale(0.5, 0.5)
+    eyeImg.Size = UDim2.fromOffset(16, 16)
+    eyeImg.BackgroundTransparency = 1
+    eyeImg.ImageColor3 = C.TextDim
+    local eyeTxt = Instance.new("TextLabel", eyeBtn)
+    eyeTxt.Size = UDim2.fromScale(1, 1)
+    eyeTxt.BackgroundTransparency = 1
+    eyeTxt.Font = FontBold
+    eyeTxt.TextSize = 14
+    eyeTxt.TextColor3 = C.TextDim
+    eyeTxt.Visible = false
+    local function refreshEye()
+        local k, v = resolveIcon(censored and "eye-off" or "eye")
+        if k == "image" then
+            eyeImg.Image = v
+            eyeImg.Visible = true
+            eyeTxt.Visible = false
+        else
+            eyeImg.Visible = false
+            eyeTxt.Text = censored and "○" or "◉"
+            eyeTxt.Visible = true
+        end
+        profName.Text = censored and "••••••" or realName
+        profUser.Text = censored and "@••••••" or realUser
+    end
+    refreshEye()
+    eyeBtn.MouseButton1Click:Connect(function()
+        censored = not censored
+        refreshEye()
+    end)
+    eyeBtn.MouseEnter:Connect(function()
+        TweenService:Create(eyeBtn, TweenInfo.new(0.12), {BackgroundTransparency = 0.2}):Play()
+    end)
+    eyeBtn.MouseLeave:Connect(function()
+        TweenService:Create(eyeBtn, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
+    end)
+    function API:SetProfileCensored(on)
+        censored = on and true or false
+        refreshEye()
     end
 end
 
@@ -1023,6 +1081,8 @@ function API:SetSidebarCollapsed(collapsed)
     for _, l in ipairs(sideLabels) do l.Visible = not sideCollapsed end
     profName.Visible = not sideCollapsed
     profUser.Visible = not sideCollapsed
+    local eb = profile:FindFirstChild("EyeBtn")
+    if eb then eb.Visible = not sideCollapsed end
     avatar.Position = UDim2.fromOffset(sideCollapsed and 5 or 10, 11)
     relayout(true)
 end
@@ -5036,5 +5096,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.5 module ready.")
+print("[BZ] Menu UI v4.5 module ready")
 return API
