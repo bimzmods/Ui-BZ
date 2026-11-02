@@ -974,7 +974,7 @@ local function relayout(animate)
     local contentPos = UDim2.fromOffset(w, CFG.HeaderH)
     local contentSize = UDim2.new(1, -w, 1, -CFG.HeaderH)
     sideLine.Visible = tabBar.Visible
-    profile.Visible = tabBar.Visible
+    profile.Visible = tabBar.Visible and not profile:GetAttribute("Min")
     local profSize = UDim2.fromOffset(w, PROFILE_H)
     if animate then
         local info = TweenInfo.new(0.2, Enum.EasingStyle.Quart)
@@ -3505,6 +3505,8 @@ function API:Open()
         win.minimized = false
         resizeHandle.Visible = true
         bottomEdge.Visible = true
+        profile:SetAttribute("Min", false)
+        profile.Visible = tabBar.Visible
     end
     if lastPos then
         menu.Position = clampPos(lastPos, targetSize)
@@ -3675,11 +3677,15 @@ local function setMinimized(on)
         win.preMinSize = UDim2.fromOffset(menu.AbsoluteSize.X, menu.AbsoluteSize.Y)
         resizeHandle.Visible = false
         bottomEdge.Visible = false
+        profile:SetAttribute("Min", true)
+        profile.Visible = false
         TweenService:Create(menu, info, {Size = UDim2.fromOffset(menu.AbsoluteSize.X, CFG.HeaderH)}):Play()
     else
         win.minimized = false
         resizeHandle.Visible = true
         bottomEdge.Visible = true
+        profile:SetAttribute("Min", false)
+        profile.Visible = tabBar.Visible
         TweenService:Create(menu, info, {Size = win.preMinSize or lastSize or defaultMenuSize()}):Play()
     end
 end
@@ -4654,6 +4660,71 @@ local function buildHomeCategory()
 end
 buildHomeCategory()
 
+
+local GL = { on = false, alpha = 0.4, map = {}, sheen = nil }
+
+function GL.glassTarget(inst)
+    if not (inst:IsA("Frame") or inst:IsA("TextButton") or inst:IsA("ScrollingFrame")) then return false end
+    if inst:GetAttribute("NoTheme") or inst:GetAttribute("NoGlass") then return false end
+    if inst.BackgroundTransparency >= 0.99 then return false end
+    local h = inst.BackgroundColor3:ToHex()
+    return h == C.Bg:ToHex() or h == C.Surface:ToHex() or h == C.Surface2:ToHex()
+end
+
+function GL.glassApply(inst)
+    if GL.map[inst] ~= nil or not GL.glassTarget(inst) then return end
+    local orig = inst.BackgroundTransparency
+    GL.map[inst] = orig
+    inst.BackgroundTransparency = orig + (1 - orig) * GL.alpha
+end
+
+function GL.glassClear()
+    for inst, orig in pairs(GL.map) do
+        if inst.Parent then inst.BackgroundTransparency = orig end
+    end
+    table.clear(GL.map)
+end
+
+function GL.glassRefresh()
+    GL.glassClear()
+    if not GL.on then return end
+    GL.glassApply(menu)
+    for _, d in ipairs(menu:GetDescendants()) do GL.glassApply(d) end
+end
+
+menu.DescendantAdded:Connect(function(d)
+    if GL.on then task.defer(GL.glassApply, d) end
+end)
+
+function API:SetGlass(on, alpha)
+    if alpha ~= nil then GL.alpha = math.clamp(tonumber(alpha) or 0.4, 0, 0.9) end
+    GL.on = on and true or false
+    if not GL.sheen then
+        local sh = Instance.new("Frame", menu)
+        sh.Name = "GlassSheen"
+        sh.Size = UDim2.fromScale(1, 1)
+        sh.BackgroundColor3 = Color3.new(1, 1, 1)
+        sh.BorderSizePixel = 0
+        sh.Active = false
+        sh.ZIndex = 1
+        sh:SetAttribute("NoTheme", true)
+        sh:SetAttribute("NoGlass", true)
+        local g = Instance.new("UIGradient", sh)
+        g.Rotation = 125
+        g.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.88),
+            NumberSequenceKeypoint.new(0.45, 0.97),
+            NumberSequenceKeypoint.new(1, 0.93),
+        })
+        Instance.new("UICorner", sh).CornerRadius = UDim.new(0, 22)
+        GL.sheen = sh
+    end
+    GL.sheen.Visible = GL.on
+    GL.glassRefresh()
+end
+
+function API:IsGlass() return GL.on end
+
 local function buildUICategory()
     local prev = currentCat
     createCategory("ui", "UI", true, { order = 9998, noSelect = true, icon = "palette" })
@@ -4710,6 +4781,13 @@ local function buildUICategory()
     API:AddSelectMenu("ui_theme", "Thema", THEME_ORDER, "Ungu", function(v)
         API:SetTheme(v)
     end)
+    API:AddToggle("ui_glass", "Mode Glass", false, function(on)
+        API:SetGlass(on)
+    end, "switch")
+    API:AddSlider("ui_glass_alpha", "Glass Transparan (%)", 10, 85, 40, function(v)
+        GL.alpha = v / 100
+        if GL.on then GL.glassRefresh() end
+    end, 5)
 
     API:AddSection("Notifikasi")
     API:AddSelectMenu("ui_notify_pos", "Posisi Notifikasi", {"Kanan Atas", "Kiri Atas", "Atas", "Bawah"}, "Kanan Atas", function(v)
@@ -4958,5 +5036,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.4 module ready.")
+print("[BZ] Menu UI v4.5 module ready.")
 return API
