@@ -186,8 +186,19 @@ menu.Visible = false
 menu.ClipsDescendants = true
 Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 22)
 local menuStroke = Instance.new("UIStroke", menu)
-menuStroke.Color = C.Stroke
-menuStroke.Thickness = 1
+menuStroke.Color = Color3.new(1, 1, 1)
+menuStroke.Thickness = 1.5
+menuStroke.Transparency = 0.2
+do
+local menuStrokeGrad = Instance.new("UIGradient", menuStroke)
+menuStrokeGrad.Rotation = 45
+menuStrokeGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, C.Text),
+    ColorSequenceKeypoint.new(0.35, C.Stroke),
+    ColorSequenceKeypoint.new(0.7, C.Stroke),
+    ColorSequenceKeypoint.new(1, C.Accent),
+})
+end
 local menuScale = Instance.new("UIScale", menu)
 menuScale.Scale = 1
 
@@ -203,9 +214,50 @@ headerLine.Position = UDim2.new(0, 0, 1, -1)
 headerLine.BackgroundColor3 = C.Stroke
 headerLine.BorderSizePixel = 0
 
-local title = Instance.new("TextLabel", header)
-title.Size = UDim2.new(1, -60, 0, 22)
-title.Position = UDim2.fromOffset(18, 8)
+local headerIconText, headerIconImage, title, versionPill, versionLabel, subtitle
+local minBtn, minLine, maxBtn, maxStroke, closeBtn, closeIcon
+do
+local headerIcon = Instance.new("Frame", header)
+headerIcon.Name = "AppIcon"
+headerIcon.Position = UDim2.fromOffset(14, 9)
+headerIcon.Size = UDim2.fromOffset(34, 34)
+headerIcon.BackgroundColor3 = C.Accent
+headerIcon.BorderSizePixel = 0
+headerIcon.ClipsDescendants = true
+Instance.new("UICorner", headerIcon).CornerRadius = UDim.new(0, 10)
+
+headerIconText = Instance.new("TextLabel", headerIcon)
+headerIconText.Size = UDim2.fromScale(1, 1)
+headerIconText.BackgroundTransparency = 1
+headerIconText.Text = "BZ"
+headerIconText.Font = FontBold
+headerIconText.TextSize = 14
+headerIconText.TextColor3 = C.Bg
+
+headerIconImage = Instance.new("ImageLabel", headerIcon)
+headerIconImage.Size = UDim2.fromScale(1, 1)
+headerIconImage.BackgroundTransparency = 1
+headerIconImage.BorderSizePixel = 0
+headerIconImage.ScaleType = Enum.ScaleType.Crop
+headerIconImage.Visible = false
+
+local HEADER_CTL_W = 108
+local titleRow = Instance.new("Frame", header)
+titleRow.Name = "TitleRow"
+titleRow.Position = UDim2.fromOffset(58, 8)
+titleRow.Size = UDim2.new(1, -(58 + HEADER_CTL_W), 0, 22)
+titleRow.BackgroundTransparency = 1
+titleRow.ClipsDescendants = true
+local titleRowLayout = Instance.new("UIListLayout", titleRow)
+titleRowLayout.FillDirection = Enum.FillDirection.Horizontal
+titleRowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+titleRowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+titleRowLayout.Padding = UDim.new(0, 8)
+
+title = Instance.new("TextLabel", titleRow)
+title.LayoutOrder = 1
+title.Size = UDim2.new(0, 0, 1, 0)
+title.AutomaticSize = Enum.AutomaticSize.X
 title.BackgroundTransparency = 1
 title.Text = "BZ Menu"
 title.Font = FontBold
@@ -213,13 +265,32 @@ title.TextSize = 17
 title.TextColor3 = C.Text
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.TextYAlignment = Enum.TextYAlignment.Center
-title.TextTruncate = Enum.TextTruncate.AtEnd
 
-local subtitle = Instance.new("TextLabel", header)
-subtitle.Size = UDim2.new(1, -60, 0, 14)
-subtitle.Position = UDim2.fromOffset(18, 32)
+versionPill = Instance.new("Frame", titleRow)
+versionPill.Name = "VersionPill"
+versionPill.LayoutOrder = 2
+versionPill.Size = UDim2.new(0, 0, 0, 16)
+versionPill.AutomaticSize = Enum.AutomaticSize.X
+versionPill.BackgroundColor3 = C.Text
+versionPill.BorderSizePixel = 0
+Instance.new("UICorner", versionPill).CornerRadius = UDim.new(1, 0)
+local versionPad = Instance.new("UIPadding", versionPill)
+versionPad.PaddingLeft = UDim.new(0, 7)
+versionPad.PaddingRight = UDim.new(0, 7)
+versionLabel = Instance.new("TextLabel", versionPill)
+versionLabel.Size = UDim2.new(0, 0, 1, 0)
+versionLabel.AutomaticSize = Enum.AutomaticSize.X
+versionLabel.BackgroundTransparency = 1
+versionLabel.Text = "v4.5"
+versionLabel.Font = FontBold
+versionLabel.TextSize = 10
+versionLabel.TextColor3 = C.Bg
+
+subtitle = Instance.new("TextLabel", header)
+subtitle.Size = UDim2.new(1, -(58 + HEADER_CTL_W), 0, 14)
+subtitle.Position = UDim2.fromOffset(58, 31)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v3.9 · Studio The Clown"
+subtitle.Text = "Studio The Clown"
 subtitle.Font = Font
 subtitle.TextSize = 11
 subtitle.TextColor3 = C.TextDim
@@ -227,23 +298,54 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left
 subtitle.TextYAlignment = Enum.TextYAlignment.Center
 subtitle.TextTruncate = Enum.TextTruncate.AtEnd
 
-local closeBtn = Instance.new("TextButton", header)
-closeBtn.Size = UDim2.fromOffset(28, 28)
-closeBtn.Position = UDim2.new(1, -38, 0, 12)
-closeBtn.BackgroundColor3 = C.Surface2
-closeBtn.AutoButtonColor = false
-closeBtn.Text = ""
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
+local function makeCtl(xOff)
+    local b = Instance.new("TextButton", header)
+    b.Size = UDim2.fromOffset(26, 26)
+    b.Position = UDim2.new(1, xOff, 0, 13)
+    b.BackgroundColor3 = C.Surface2
+    b.BackgroundTransparency = 1
+    b.AutoButtonColor = false
+    b.Text = ""
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+    return b
+end
 
-local closeIcon = Instance.new("TextLabel", closeBtn)
+minBtn = makeCtl(-98)
+minBtn.Name = "MinimizeBtn"
+minLine = Instance.new("Frame", minBtn)
+minLine.AnchorPoint = Vector2.new(0.5, 0.5)
+minLine.Position = UDim2.fromScale(0.5, 0.5)
+minLine.Size = UDim2.fromOffset(11, 2)
+minLine.BackgroundColor3 = C.TextDim
+minLine.BorderSizePixel = 0
+Instance.new("UICorner", minLine).CornerRadius = UDim.new(1, 0)
+
+maxBtn = makeCtl(-68)
+maxBtn.Name = "MaximizeBtn"
+local maxBox = Instance.new("Frame", maxBtn)
+maxBox.AnchorPoint = Vector2.new(0.5, 0.5)
+maxBox.Position = UDim2.fromScale(0.5, 0.5)
+maxBox.Size = UDim2.fromOffset(11, 11)
+maxBox.BackgroundTransparency = 1
+maxBox.BorderSizePixel = 0
+Instance.new("UICorner", maxBox).CornerRadius = UDim.new(0, 2)
+maxStroke = Instance.new("UIStroke", maxBox)
+maxStroke.Color = C.TextDim
+maxStroke.Thickness = 1.6
+
+closeBtn = makeCtl(-38)
+closeBtn.Name = "CloseBtn"
+closeIcon = Instance.new("TextLabel", closeBtn)
 closeIcon.Size = UDim2.fromScale(1, 1)
 closeIcon.BackgroundTransparency = 1
 closeIcon.Text = "×"
 closeIcon.Font = FontBold
-closeIcon.TextSize = 20
+closeIcon.TextSize = 22
 closeIcon.TextColor3 = C.TextDim
 
-local SIDE_W = 108
+end
+
+local SIDE_W = 136
 local SIDE_C = 44
 local sideCollapsed = false
 
@@ -266,7 +368,7 @@ tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local tabPad = Instance.new("UIPadding", tabBar)
 tabPad.PaddingTop = UDim.new(0, 8)
-tabPad.PaddingBottom = UDim.new(0, 28)
+tabPad.PaddingBottom = UDim.new(0, 64)
 tabPad.PaddingLeft = UDim.new(0, 8)
 tabPad.PaddingRight = UDim.new(0, 8)
 
@@ -296,6 +398,68 @@ sideLine.Position = UDim2.fromOffset(SIDE_W, CFG.HeaderH)
 sideLine.BackgroundColor3 = C.Stroke
 sideLine.BorderSizePixel = 0
 sideLine.Visible = false
+
+local PROFILE_H = 56
+local profile, avatar, profName, profUser
+do
+profile = Instance.new("Frame", menu)
+profile.Name = "Profile"
+profile.AnchorPoint = Vector2.new(0, 1)
+profile.Position = UDim2.new(0, 0, 1, 0)
+profile.Size = UDim2.fromOffset(SIDE_W, PROFILE_H)
+profile.BackgroundTransparency = 1
+profile.BorderSizePixel = 0
+profile.ClipsDescendants = true
+profile.Visible = false
+local profileLine = Instance.new("Frame", profile)
+profileLine.Size = UDim2.new(1, 0, 0, 1)
+profileLine.BackgroundColor3 = C.Stroke
+profileLine.BorderSizePixel = 0
+
+avatar = Instance.new("Frame", profile)
+avatar.Name = "Avatar"
+avatar.Position = UDim2.fromOffset(10, 11)
+avatar.Size = UDim2.fromOffset(34, 34)
+avatar.BackgroundColor3 = C.Surface2
+avatar.BorderSizePixel = 0
+avatar.ClipsDescendants = true
+Instance.new("UICorner", avatar).CornerRadius = UDim.new(1, 0)
+local avatarStroke = Instance.new("UIStroke", avatar)
+avatarStroke.Color = C.TextDim
+avatarStroke.Thickness = 1.5
+local avatarImg = Instance.new("ImageLabel", avatar)
+avatarImg.Size = UDim2.fromScale(1, 1)
+avatarImg.BackgroundTransparency = 1
+avatarImg.BorderSizePixel = 0
+task.spawn(function()
+    local ok2, img = pcall(function()
+        return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+    end)
+    if ok2 and img then avatarImg.Image = img end
+end)
+
+profName = Instance.new("TextLabel", profile)
+profName.Position = UDim2.fromOffset(52, 12)
+profName.Size = UDim2.new(1, -58, 0, 16)
+profName.BackgroundTransparency = 1
+profName.Text = player.DisplayName
+profName.Font = FontBold
+profName.TextSize = 13
+profName.TextColor3 = C.Text
+profName.TextXAlignment = Enum.TextXAlignment.Left
+profName.TextTruncate = Enum.TextTruncate.AtEnd
+profUser = Instance.new("TextLabel", profile)
+profUser.Position = UDim2.fromOffset(52, 28)
+profUser.Size = UDim2.new(1, -58, 0, 15)
+profUser.BackgroundTransparency = 1
+profUser.Text = "@" .. player.Name
+profUser.Font = Font
+profUser.TextSize = 12
+profUser.TextColor3 = C.TextDim
+profUser.TextXAlignment = Enum.TextXAlignment.Left
+profUser.TextTruncate = Enum.TextTruncate.AtEnd
+
+end
 
 local contentArea = Instance.new("Frame", menu)
 contentArea.Name = "Content"
@@ -767,7 +931,7 @@ local function makeTabIcon(parent, icon)
     local obj
     if kind == "image" then
         obj = Instance.new("ImageLabel", parent)
-        obj.Size = UDim2.fromOffset(14, 14)
+        obj.Size = UDim2.fromOffset(18, 18)
         obj.BackgroundTransparency = 1
         obj.Image = value
         obj.ImageColor3 = C.TextDim
@@ -810,17 +974,44 @@ local function relayout(animate)
     local contentPos = UDim2.fromOffset(w, CFG.HeaderH)
     local contentSize = UDim2.new(1, -w, 1, -CFG.HeaderH)
     sideLine.Visible = tabBar.Visible
+    profile.Visible = tabBar.Visible
+    local profSize = UDim2.fromOffset(w, PROFILE_H)
     if animate then
         local info = TweenInfo.new(0.2, Enum.EasingStyle.Quart)
         TweenService:Create(tabBar, info, {Size = sideSize}):Play()
         TweenService:Create(contentArea, info, {Position = contentPos, Size = contentSize}):Play()
         TweenService:Create(sideLine, info, {Position = contentPos}):Play()
+        TweenService:Create(profile, info, {Size = profSize}):Play()
     else
         tabBar.Size = sideSize
         contentArea.Position = contentPos
         contentArea.Size = contentSize
         sideLine.Position = contentPos
+        profile.Size = profSize
     end
+end
+
+local sideLabels = {}
+
+function API:AddCategoryLabel(text)
+    categoryOrder = categoryOrder + 1
+    local lbl = Instance.new("TextLabel", tabBar)
+    lbl.Name = "SideLabel"
+    lbl.LayoutOrder = categoryOrder
+    lbl.Size = UDim2.new(1, 0, 0, 28)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = string.upper(tostring(text or ""))
+    lbl.Font = FontBold
+    lbl.TextSize = 11
+    lbl.TextColor3 = C.TextDim
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextYAlignment = Enum.TextYAlignment.Bottom
+    lbl.Visible = not sideCollapsed
+    Instance.new("UIPadding", lbl).PaddingLeft = UDim.new(0, 6)
+    sideLabels[#sideLabels + 1] = lbl
+    tabBar.Visible = true
+    relayout()
+    return lbl
 end
 
 function API:SetSidebarCollapsed(collapsed)
@@ -829,6 +1020,10 @@ function API:SetSidebarCollapsed(collapsed)
         cat.layout.HorizontalAlignment = sideCollapsed and Enum.HorizontalAlignment.Center or Enum.HorizontalAlignment.Left
         cat.label.Visible = (cat.label.Text ~= "") and not sideCollapsed
     end
+    for _, l in ipairs(sideLabels) do l.Visible = not sideCollapsed end
+    profName.Visible = not sideCollapsed
+    profUser.Visible = not sideCollapsed
+    avatar.Position = UDim2.fromOffset(sideCollapsed and 5 or 10, 11)
     relayout(true)
 end
 
@@ -851,6 +1046,12 @@ function API:SelectCategory(name)
         local on = (n == name)
         local info = TweenInfo.new(0.15)
         TweenService:Create(cat.button, info, {BackgroundTransparency = on and 0 or 1}):Play()
+        if cat.bar then
+            TweenService:Create(cat.bar, info, {
+                BackgroundTransparency = on and 0 or 1,
+                Size = on and UDim2.fromOffset(3, 20) or UDim2.fromOffset(3, 8),
+            }):Play()
+        end
         TweenService:Create(cat.label, info, {TextColor3 = on and C.Text or C.TextDim}):Play()
         if cat.icon then
             local prop = cat.icon:IsA("ImageLabel") and "ImageColor3" or "TextColor3"
@@ -903,35 +1104,51 @@ local function createCategory(name, labelText, explicit, opts)
 
     local btn = Instance.new("TextButton", tabBar)
     btn.Name = name .. "_Tab"
-    btn.Size = UDim2.new(1, 0, 0, 36)
+    btn.Size = UDim2.new(1, 0, 0, 40)
     btn.BackgroundColor3 = C.Surface2
     btn.BackgroundTransparency = 1
     btn.AutoButtonColor = false
     btn.Text = ""
     btn.LayoutOrder = (opts and opts.order) or categoryOrder
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
-    local p = Instance.new("UIPadding", btn)
-    p.PaddingLeft = UDim.new(0, 8)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+
+    local bar = Instance.new("Frame", btn)
+    bar.Name = "ActiveBar"
+    bar.AnchorPoint = Vector2.new(0, 0.5)
+    bar.Position = UDim2.new(0, 3, 0.5, 0)
+    bar.Size = UDim2.fromOffset(3, 8)
+    bar.BackgroundColor3 = C.Accent
+    bar.BackgroundTransparency = 1
+    bar.BorderSizePixel = 0
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
+
+    local rowF = Instance.new("Frame", btn)
+    rowF.Name = "Row"
+    rowF.Size = UDim2.fromScale(1, 1)
+    rowF.BackgroundTransparency = 1
+    rowF.BorderSizePixel = 0
+    local p = Instance.new("UIPadding", rowF)
+    p.PaddingLeft = UDim.new(0, 12)
     p.PaddingRight = UDim.new(0, 6)
-    local tabLay = Instance.new("UIListLayout", btn)
+    local tabLay = Instance.new("UIListLayout", rowF)
     tabLay.FillDirection = Enum.FillDirection.Horizontal
-    tabLay.Padding = UDim.new(0, 6)
+    tabLay.Padding = UDim.new(0, 8)
     tabLay.SortOrder = Enum.SortOrder.LayoutOrder
     tabLay.VerticalAlignment = Enum.VerticalAlignment.Center
     tabLay.HorizontalAlignment = sideCollapsed and Enum.HorizontalAlignment.Center or Enum.HorizontalAlignment.Left
 
     local text = (labelText == nil) and name or labelText
-    local cat = { body = makeBody(), button = btn, layout = tabLay }
-    cat.icon = makeTabIcon(btn, opts and opts.icon) or makeLetterIcon(btn, text)
+    local cat = { body = makeBody(), button = btn, layout = tabLay, row = rowF, bar = bar }
+    cat.icon = makeTabIcon(rowF, opts and opts.icon) or makeLetterIcon(rowF, text)
 
-    local labelObj = Instance.new("TextLabel", btn)
+    local labelObj = Instance.new("TextLabel", rowF)
     labelObj.Name = "Label"
     labelObj.LayoutOrder = 2
     labelObj.Size = UDim2.new(1, -24, 1, 0)
     labelObj.BackgroundTransparency = 1
     labelObj.Text = text
     labelObj.Font = FontBold
-    labelObj.TextSize = 12
+    labelObj.TextSize = 13
     labelObj.TextColor3 = C.TextDim
     labelObj.TextXAlignment = Enum.TextXAlignment.Left
     labelObj.TextTruncate = Enum.TextTruncate.AtEnd
@@ -959,7 +1176,7 @@ function API:SetCategoryIcon(name, icon)
         cat.icon:Destroy()
         cat.icon = nil
     end
-    cat.icon = makeTabIcon(cat.button, icon) or makeLetterIcon(cat.button, cat.label.Text)
+    cat.icon = makeTabIcon(cat.row, icon) or makeLetterIcon(cat.row, cat.label.Text)
     if cat.icon then
         local fg = (selectedCat == name) and C.Accent or C.TextDim
         local prop = cat.icon:IsA("ImageLabel") and "ImageColor3" or "TextColor3"
@@ -971,12 +1188,19 @@ function API:UseCategory(name)
     if categories[name] then currentCat = name end
 end
 
-local function currentBody()
+local function baseBody()
     if not currentCat then
         createCategory("main", "Main", false, { icon = "home" })
         currentCat = "main"
     end
     return categories[currentCat].body
+end
+
+local function currentBody()
+    local body = baseBody()
+    local g = categories[currentCat].group
+    if g then return g.content end
+    return body
 end
 
 function API:AddSection(text)
@@ -992,6 +1216,209 @@ function API:AddSection(text)
     lbl.LayoutOrder = nextOrder()
     Instance.new("UIPadding", lbl).PaddingLeft = UDim.new(0, 6)
     return lbl
+end
+
+function API:AddBanner(name, titleText, descText, icon)
+    local order = nextOrder()
+    local key = name or ("banner_" .. order)
+    local row = Instance.new("Frame", currentBody())
+    row.Name = key .. "_Row"
+    row.Size = UDim2.new(1, 0, 0, 0)
+    row.AutomaticSize = Enum.AutomaticSize.Y
+    row.BackgroundColor3 = C.Surface
+    row.BorderSizePixel = 0
+    row.LayoutOrder = order
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 14)
+    local st = Instance.new("UIStroke", row)
+    st.Color = C.Stroke
+    st.Thickness = 1
+    st.Transparency = 0.2
+    local pad = Instance.new("UIPadding", row)
+    pad.PaddingTop = UDim.new(0, 12)
+    pad.PaddingBottom = UDim.new(0, 12)
+    pad.PaddingLeft = UDim.new(0, 12)
+    pad.PaddingRight = UDim.new(0, 12)
+    local minH = Instance.new("UISizeConstraint", row)
+    minH.MinSize = Vector2.new(0, 76)
+
+    local box = Instance.new("Frame", row)
+    box.Size = UDim2.fromOffset(52, 52)
+    box.BackgroundColor3 = C.Accent
+    box.BorderSizePixel = 0
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 12)
+    local kind, value = resolveIcon(icon or "sparkles")
+    if kind == "image" then
+        local img = Instance.new("ImageLabel", box)
+        img.AnchorPoint = Vector2.new(0.5, 0.5)
+        img.Position = UDim2.fromScale(0.5, 0.5)
+        img.Size = UDim2.fromOffset(28, 28)
+        img.BackgroundTransparency = 1
+        img.Image = value
+        img.ImageColor3 = C.Bg
+    else
+        local t = Instance.new("TextLabel", box)
+        t.Size = UDim2.fromScale(1, 1)
+        t.BackgroundTransparency = 1
+        t.Text = value or "★"
+        t.Font = FontBold
+        t.TextSize = 22
+        t.TextColor3 = C.Bg
+    end
+
+    local texts = Instance.new("Frame", row)
+    texts.Position = UDim2.fromOffset(64, 0)
+    texts.Size = UDim2.new(1, -64, 0, 0)
+    texts.AutomaticSize = Enum.AutomaticSize.Y
+    texts.BackgroundTransparency = 1
+    local tl = Instance.new("UIListLayout", texts)
+    tl.Padding = UDim.new(0, 3)
+    tl.SortOrder = Enum.SortOrder.LayoutOrder
+    tl.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    local function mk(order2, text, font, size, color)
+        local l = Instance.new("TextLabel", texts)
+        l.LayoutOrder = order2
+        l.Size = UDim2.new(1, 0, 0, 0)
+        l.AutomaticSize = Enum.AutomaticSize.Y
+        l.BackgroundTransparency = 1
+        l.Text = tostring(text or "")
+        l.Font = font
+        l.TextSize = size
+        l.TextColor3 = color
+        l.TextWrapped = true
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.TextYAlignment = Enum.TextYAlignment.Top
+        return l
+    end
+    local tLbl = mk(1, titleText, FontBold, 16, C.Text)
+    local dLbl = mk(2, descText, Font, 13, C.TextDim)
+
+    local handle = { row = row }
+    function handle:SetTitle(t) tLbl.Text = tostring(t) end
+    function handle:SetDescription(t) dLbl.Text = tostring(t) end
+    registry[key] = { kind = "banner", row = row }
+    return handle
+end
+
+function API:AddGroup(name, labelText, icon, startOpen)
+    baseBody()
+    local cat = categories[currentCat]
+    local order = nextOrder()
+    local open = startOpen and true or false
+
+    local holder = Instance.new("Frame", cat.body)
+    holder.Name = name .. "_Group"
+    holder.Size = UDim2.new(1, 0, 0, 0)
+    holder.AutomaticSize = Enum.AutomaticSize.Y
+    holder.BackgroundTransparency = 1
+    holder.BorderSizePixel = 0
+    holder.LayoutOrder = order
+    local hl = Instance.new("UIListLayout", holder)
+    hl.Padding = UDim.new(0, 8)
+    hl.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local head = Instance.new("TextButton", holder)
+    head.Name = "Head"
+    head.LayoutOrder = 1
+    head.Size = UDim2.new(1, 0, 0, 44)
+    head.BackgroundColor3 = C.Surface
+    head.AutoButtonColor = false
+    head.Text = ""
+    Instance.new("UICorner", head).CornerRadius = UDim.new(0, 12)
+    local hs = Instance.new("UIStroke", head)
+    hs.Color = C.Stroke
+    hs.Thickness = 1
+    hs.Transparency = 0.2
+
+    local textX = 14
+    local ik, iv = resolveIcon(icon)
+    if ik == "image" then
+        local img = Instance.new("ImageLabel", head)
+        img.AnchorPoint = Vector2.new(0, 0.5)
+        img.Position = UDim2.new(0, 14, 0.5, 0)
+        img.Size = UDim2.fromOffset(18, 18)
+        img.BackgroundTransparency = 1
+        img.Image = iv
+        img.ImageColor3 = C.TextDim
+        textX = 42
+    elseif ik == "text" then
+        local t = Instance.new("TextLabel", head)
+        t.AnchorPoint = Vector2.new(0, 0.5)
+        t.Position = UDim2.new(0, 14, 0.5, 0)
+        t.Size = UDim2.fromOffset(18, 18)
+        t.BackgroundTransparency = 1
+        t.Text = iv
+        t.Font = FontBold
+        t.TextSize = 14
+        t.TextColor3 = C.TextDim
+        textX = 42
+    end
+
+    local lbl = Instance.new("TextLabel", head)
+    lbl.Position = UDim2.fromOffset(textX, 0)
+    lbl.Size = UDim2.new(1, -(textX + 40), 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText or name
+    lbl.Font = FontBold
+    lbl.TextSize = 14
+    lbl.TextColor3 = C.Text
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextTruncate = Enum.TextTruncate.AtEnd
+
+    local chev
+    local ck, cv = resolveIcon("chevron-right")
+    if ck == "image" then
+        chev = Instance.new("ImageLabel", head)
+        chev.Image = cv
+        chev.ImageColor3 = C.TextDim
+    else
+        chev = Instance.new("TextLabel", head)
+        chev.Text = ">"
+        chev.Font = FontBold
+        chev.TextSize = 16
+        chev.TextColor3 = C.TextDim
+    end
+    chev.AnchorPoint = Vector2.new(0.5, 0.5)
+    chev.Position = UDim2.new(1, -24, 0.5, 0)
+    chev.Size = UDim2.fromOffset(18, 18)
+    chev.BackgroundTransparency = 1
+    chev.Rotation = open and 90 or 0
+
+    local content = Instance.new("Frame", holder)
+    content.Name = "Content"
+    content.LayoutOrder = 2
+    content.Size = UDim2.new(1, 0, 0, 0)
+    content.AutomaticSize = Enum.AutomaticSize.Y
+    content.BackgroundTransparency = 1
+    content.BorderSizePixel = 0
+    content.Visible = open
+    local cl = Instance.new("UIListLayout", content)
+    cl.Padding = UDim.new(0, 8)
+    cl.SortOrder = Enum.SortOrder.LayoutOrder
+    cl.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    local cp = Instance.new("UIPadding", content)
+    cp.PaddingLeft = UDim.new(0, 8)
+
+    local function setOpen(v)
+        open = v and true or false
+        content.Visible = open
+        TweenService:Create(chev, TweenInfo.new(0.18, Enum.EasingStyle.Quart), {Rotation = open and 90 or 0}):Play()
+    end
+    head.MouseButton1Click:Connect(function() setOpen(not open) end)
+
+    cat.group = { holder = holder, content = content }
+    registry[name] = { kind = "group", row = holder }
+
+    local handle = { row = holder, content = content }
+    function handle:Set(v) setOpen(v) end
+    function handle:Toggle() setOpen(not open) end
+    return handle
+end
+
+function API:EndGroup()
+    if currentCat and categories[currentCat] then
+        categories[currentCat].group = nil
+    end
 end
 
 local TOGGLE_ALIASES = {
@@ -2696,6 +3123,7 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     local value = math.clamp(default, min, max)
 
     local parentBody = currentBody()
+    local scrollBody = categories[currentCat].body
     local row = Instance.new("Frame", parentBody)
     row.Name = name .. "_Row"
     row.Size = UDim2.new(1, 0, 0, 62)
@@ -2787,8 +3215,8 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
         or input.UserInputType == Enum.UserInputType.Touch then
             activeSlider = updateFromX
             activeInput = input
-            activeBody = parentBody
-            parentBody.ScrollingEnabled = false
+            activeBody = scrollBody
+            scrollBody.ScrollingEnabled = false
             updateFromX(input.Position.X)
         end
     end)
@@ -3054,6 +3482,7 @@ local function defaultMenuSize()
 end
 
 local isOpen = false
+local win = { minimized = false, maximized = false }
 local lastPos, lastSize = nil, nil
 local closeToken = 0
 
@@ -3072,6 +3501,11 @@ function API:Open()
 
     local targetSize = lastSize or defaultMenuSize()
     menu.Size = targetSize
+    if win.minimized then
+        win.minimized = false
+        resizeHandle.Visible = true
+        bottomEdge.Visible = true
+    end
     if lastPos then
         menu.Position = clampPos(lastPos, targetSize)
     else
@@ -3232,16 +3666,67 @@ API._connect(UserInputService.InputEnded, function(input)
     end
 end)
 
+
+local function setMinimized(on)
+    if on == win.minimized then return end
+    local info = TweenInfo.new(0.2, Enum.EasingStyle.Quart)
+    if on then
+        win.minimized = true
+        win.preMinSize = UDim2.fromOffset(menu.AbsoluteSize.X, menu.AbsoluteSize.Y)
+        resizeHandle.Visible = false
+        bottomEdge.Visible = false
+        TweenService:Create(menu, info, {Size = UDim2.fromOffset(menu.AbsoluteSize.X, CFG.HeaderH)}):Play()
+    else
+        win.minimized = false
+        resizeHandle.Visible = true
+        bottomEdge.Visible = true
+        TweenService:Create(menu, info, {Size = win.preMinSize or lastSize or defaultMenuSize()}):Play()
+    end
+end
+
+minBtn.MouseButton1Click:Connect(function() setMinimized(not win.minimized) end)
+
+maxBtn.MouseButton1Click:Connect(function()
+    if win.minimized then setMinimized(false) end
+    local info = TweenInfo.new(0.22, Enum.EasingStyle.Quart)
+    if not win.maximized then
+        win.maximized = true
+        win.preMaxSize = UDim2.fromOffset(menu.AbsoluteSize.X, menu.AbsoluteSize.Y)
+        win.preMaxPos = menu.Position
+        local cam = workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+        local pad = CFG.ScreenPad
+        local sz = UDim2.fromOffset(vp.X - pad * 2, vp.Y - pad * 2)
+        local ps = UDim2.fromOffset(pad, pad)
+        TweenService:Create(menu, info, {Size = sz, Position = ps}):Play()
+        lastSize, lastPos = sz, ps
+    else
+        win.maximized = false
+        local sz = win.preMaxSize or defaultMenuSize()
+        local ps = win.preMaxPos or menu.Position
+        TweenService:Create(menu, info, {Size = sz, Position = ps}):Play()
+        lastSize, lastPos = sz, ps
+    end
+end)
+
 closeBtn.MouseButton1Click:Connect(function() API:Close() end)
 
-closeBtn.MouseEnter:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = C.Stroke}):Play()
-    TweenService:Create(closeIcon, TweenInfo.new(0.12), {TextColor3 = C.Text}):Play()
-end)
-closeBtn.MouseLeave:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = C.Surface2}):Play()
-    TweenService:Create(closeIcon, TweenInfo.new(0.12), {TextColor3 = C.TextDim}):Play()
-end)
+do
+local function ctlHover(btn, inst, prop)
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.12), {BackgroundTransparency = 0.2}):Play()
+        TweenService:Create(inst, TweenInfo.new(0.12), {[prop] = C.Text}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(inst, TweenInfo.new(0.12), {[prop] = C.TextDim}):Play()
+    end)
+end
+ctlHover(minBtn, minLine, "BackgroundColor3")
+ctlHover(maxBtn, maxStroke, "Color")
+ctlHover(closeBtn, closeIcon, "TextColor3")
+
+end
 
 logo.MouseEnter:Connect(function()
     TweenService:Create(logoStroke, TweenInfo.new(0.15), {Thickness = 2.5}):Play()
@@ -3690,6 +4175,9 @@ local function showLogoImage(asset)
     logoImage.Image = asset
     logoImage.Visible = true
     logoText.Visible = false
+    headerIconImage.Image = asset
+    headerIconImage.Visible = true
+    headerIconText.Visible = false
 end
 
 function API:ClearLogoImage()
@@ -3697,6 +4185,9 @@ function API:ClearLogoImage()
     logoImage.Image = ""
     logoImage.Visible = false
     logoText.Visible = true
+    headerIconImage.Image = ""
+    headerIconImage.Visible = false
+    headerIconText.Visible = true
 end
 
 function API:SetLogoImage(url, callback)
@@ -3779,10 +4270,10 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v4.4"
-local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Studio = "Studio The Clown" }
+local BZ_VERSION = "v4.5"
+local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown" }
 local logoSizeValue = 44
-local studioText, studioShowVersion = TEXT_DEFAULTS.Studio, true
+local deskripsiText, versionShow = TEXT_DEFAULTS.Deskripsi, true
 
 local function refreshLogoText()
     local len = utf8.len(logoText.Text) or #logoText.Text
@@ -3791,13 +4282,12 @@ local function refreshLogoText()
     logoText.TextSize = math.max(8, math.floor(size))
 end
 
-local function refreshStudio()
-    if studioShowVersion then
-        subtitle.Text = BZ_VERSION .. " · " .. studioText
-    else
-        subtitle.Text = studioText
-    end
+local function refreshDeskripsi()
+    subtitle.Text = deskripsiText
+    versionLabel.Text = BZ_VERSION
+    versionPill.Visible = versionShow
 end
+refreshDeskripsi()
 
 function API:SetTitle(text)
     if text == nil or tostring(text) == "" then text = TEXT_DEFAULTS.Title end
@@ -3807,28 +4297,34 @@ end
 function API:SetLogoText(text)
     if text == nil or tostring(text) == "" then text = TEXT_DEFAULTS.Logo end
     logoText.Text = tostring(text)
+    headerIconText.Text = tostring(text)
+    local len = utf8.len(headerIconText.Text) or #headerIconText.Text
+    headerIconText.TextSize = math.max(8, math.floor(len > 2 and 28 / len or 14))
     refreshLogoText()
 end
 
-function API:SetStudio(text, showVersion)
-    if text == nil or tostring(text) == "" then text = TEXT_DEFAULTS.Studio end
-    studioText = tostring(text)
-    if showVersion ~= nil then studioShowVersion = showVersion and true or false end
-    refreshStudio()
+function API:SetDeskripsi(text, showVersion)
+    if text == nil or tostring(text) == "" then text = TEXT_DEFAULTS.Deskripsi end
+    deskripsiText = tostring(text)
+    if showVersion ~= nil then versionShow = showVersion and true or false end
+    refreshDeskripsi()
 end
+API.SetStudio = API.SetDeskripsi
 
 function API:SetTexts(t)
     t = t or {}
     if t.Title ~= nil then API:SetTitle(t.Title) end
     if t.Logo ~= nil then API:SetLogoText(t.Logo) end
-    if t.Studio ~= nil then API:SetStudio(t.Studio, t.ShowVersion) end
+    local d = t.Deskripsi
+    if d == nil then d = t.Studio end
+    if d ~= nil then API:SetDeskripsi(d, t.ShowVersion) end
 end
 
 function API:ResetTexts()
-    studioShowVersion = true
+    versionShow = true
     API:SetTitle(nil)
     API:SetLogoText(nil)
-    API:SetStudio(nil)
+    API:SetDeskripsi(nil)
 end
 
 local HOME_DISCORD_INVITE = "https://discord.gg/vZmZcvrfU7"
