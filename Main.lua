@@ -1374,7 +1374,7 @@ function API:AddGroup(name, labelText, icon, startOpen)
     holder.BorderSizePixel = 0
     holder.LayoutOrder = order
     local hl = Instance.new("UIListLayout", holder)
-    hl.Padding = UDim.new(0, 8)
+    hl.Padding = UDim.new(0, 0)
     hl.SortOrder = Enum.SortOrder.LayoutOrder
 
     local head = Instance.new("TextButton", holder)
@@ -1391,6 +1391,7 @@ function API:AddGroup(name, labelText, icon, startOpen)
     hs.Transparency = 0.2
 
     local textX = 14
+    local iconInst, iconProp
     local ik, iv = resolveIcon(icon)
     if ik == "image" then
         local img = Instance.new("ImageLabel", head)
@@ -1400,6 +1401,7 @@ function API:AddGroup(name, labelText, icon, startOpen)
         img.BackgroundTransparency = 1
         img.Image = iv
         img.ImageColor3 = C.TextDim
+        iconInst, iconProp = img, "ImageColor3"
         textX = 42
     elseif ik == "text" then
         local t = Instance.new("TextLabel", head)
@@ -1411,6 +1413,7 @@ function API:AddGroup(name, labelText, icon, startOpen)
         t.Font = FontBold
         t.TextSize = 14
         t.TextColor3 = C.TextDim
+        iconInst, iconProp = t, "TextColor3"
         textX = 42
     end
 
@@ -1425,18 +1428,20 @@ function API:AddGroup(name, labelText, icon, startOpen)
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.TextTruncate = Enum.TextTruncate.AtEnd
 
-    local chev
+    local chev, chevProp
     local ck, cv = resolveIcon("chevron-right")
     if ck == "image" then
         chev = Instance.new("ImageLabel", head)
         chev.Image = cv
         chev.ImageColor3 = C.TextDim
+        chevProp = "ImageColor3"
     else
         chev = Instance.new("TextLabel", head)
         chev.Text = ">"
         chev.Font = FontBold
         chev.TextSize = 16
         chev.TextColor3 = C.TextDim
+        chevProp = "TextColor3"
     end
     chev.AnchorPoint = Vector2.new(0.5, 0.5)
     chev.Position = UDim2.new(1, -24, 0.5, 0)
@@ -1444,14 +1449,24 @@ function API:AddGroup(name, labelText, icon, startOpen)
     chev.BackgroundTransparency = 1
     chev.Rotation = open and 90 or 0
 
-    local content = Instance.new("Frame", holder)
+    local clip = Instance.new("Frame", holder)
+    clip.Name = "Clip"
+    clip.LayoutOrder = 2
+    clip.BackgroundTransparency = 1
+    clip.BorderSizePixel = 0
+    clip.ClipsDescendants = true
+    clip.Visible = open
+    clip.Size = UDim2.new(1, 0, 0, 0)
+    clip.AutomaticSize = open and Enum.AutomaticSize.Y or Enum.AutomaticSize.None
+    local clipPad = Instance.new("UIPadding", clip)
+    clipPad.PaddingTop = UDim.new(0, 8)
+
+    local content = Instance.new("Frame", clip)
     content.Name = "Content"
-    content.LayoutOrder = 2
     content.Size = UDim2.new(1, 0, 0, 0)
     content.AutomaticSize = Enum.AutomaticSize.Y
     content.BackgroundTransparency = 1
     content.BorderSizePixel = 0
-    content.Visible = open
     local cl = Instance.new("UIListLayout", content)
     cl.Padding = UDim.new(0, 8)
     cl.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1459,19 +1474,89 @@ function API:AddGroup(name, labelText, icon, startOpen)
     local cp = Instance.new("UIPadding", content)
     cp.PaddingLeft = UDim.new(0, 8)
 
-    local function setOpen(v)
-        open = v and true or false
-        content.Visible = open
-        TweenService:Create(chev, TweenInfo.new(0.18, Enum.EasingStyle.Quart), {Rotation = open and 90 or 0}):Play()
+    local ANIM = TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local FAST = TweenInfo.new(0.15, Enum.EasingStyle.Quart)
+    local token = 0
+    local hovering = false
+
+    local function paintHead()
+        local fg = open and C.Accent or C.TextDim
+        TweenService:Create(chev, FAST, {[chevProp] = fg}):Play()
+        if iconInst then TweenService:Create(iconInst, FAST, {[iconProp] = fg}):Play() end
+        TweenService:Create(hs, FAST, {
+            Color = open and C.Accent or C.Stroke,
+            Transparency = open and 0.35 or 0.2,
+        }):Play()
+        TweenService:Create(head, FAST, {
+            BackgroundColor3 = (hovering and not open) and C.Surface2 or C.Surface,
+        }):Play()
     end
+
+    local function setOpen(v, instant)
+        v = v and true or false
+        if v == open and not instant then return end
+        open = v
+        token = token + 1
+        local my = token
+
+        TweenService:Create(chev, TweenInfo.new(0.22, Enum.EasingStyle.Quart), {Rotation = open and 90 or 0}):Play()
+        paintHead()
+
+        if instant then
+            clip.Visible = open
+            clip.AutomaticSize = open and Enum.AutomaticSize.Y or Enum.AutomaticSize.None
+            clip.Size = UDim2.new(1, 0, 0, 0)
+            return
+        end
+
+        if open then
+            clip.AutomaticSize = Enum.AutomaticSize.None
+            clip.Size = UDim2.new(1, 0, 0, 0)
+            clip.Visible = true
+            task.spawn(function()
+                task.wait()
+                if my ~= token then return end
+                local target = cl.AbsoluteContentSize.Y + 8
+                local tw = TweenService:Create(clip, ANIM, {Size = UDim2.new(1, 0, 0, target)})
+                tw.Completed:Connect(function(state)
+                    if my == token and state == Enum.PlaybackState.Completed then
+                        clip.AutomaticSize = Enum.AutomaticSize.Y
+                        clip.Size = UDim2.new(1, 0, 0, 0)
+                    end
+                end)
+                tw:Play()
+            end)
+        else
+            local cur = clip.AbsoluteSize.Y
+            clip.AutomaticSize = Enum.AutomaticSize.None
+            clip.Size = UDim2.new(1, 0, 0, cur)
+            local tw = TweenService:Create(clip, ANIM, {Size = UDim2.new(1, 0, 0, 0)})
+            tw.Completed:Connect(function(state)
+                if my == token and state == Enum.PlaybackState.Completed then
+                    clip.Visible = false
+                end
+            end)
+            tw:Play()
+        end
+    end
+
     head.MouseButton1Click:Connect(function() setOpen(not open) end)
+    head.MouseEnter:Connect(function() hovering = true; paintHead() end)
+    head.MouseLeave:Connect(function() hovering = false; paintHead() end)
+    if open then
+        hs.Color = C.Accent
+        hs.Transparency = 0.35
+        chev[chevProp] = C.Accent
+        if iconInst then iconInst[iconProp] = C.Accent end
+    end
 
     cat.group = { holder = holder, content = content }
     registry[name] = { kind = "group", row = holder }
 
     local handle = { row = holder, content = content }
-    function handle:Set(v) setOpen(v) end
+    function handle:Set(v, instant) setOpen(v, instant) end
     function handle:Toggle() setOpen(not open) end
+    function handle:IsOpen() return open end
     return handle
 end
 
@@ -3943,6 +4028,10 @@ function API:GetNotifyPosition()
     return notifyPos
 end
 
+local notifyEnabled = true
+function API:SetNotifyEnabled(on) notifyEnabled = on and true or false end
+function API:IsNotifyEnabled() return notifyEnabled end
+
 local toastOrder = 0
 local toastEntries = {}
 
@@ -4013,6 +4102,8 @@ function API:Notify(data, kind, desc, duration)
     kindName = NOTIFY_ALIASES[kindName] or kindName
     if not NOTIFY_TYPES[kindName] then kindName = "info" end
     local color = NOTIFY_TYPES[kindName]
+
+    if not notifyEnabled and not (data.Force or data.force) then return end
 
     local titleText = tostring(data.Title or data.title or "")
     local descText = tostring(data.Description or data.description or data.Content or data.content or "")
@@ -4787,10 +4878,9 @@ function API:IsGlass() return GL.on end
 
 local function buildUICategory()
     local prev = currentCat
-    createCategory("ui", "UI", true, { order = 9998, noSelect = true, icon = "palette" })
+    createCategory("ui", "UI", true, { order = 9997, noSelect = true, icon = "palette" })
     currentCat = "ui"
 
-    API:AddNote("Note: Unload completely removes this menu and every script loaded through it. All active toggles are switched off, all connections are disconnected and all UI is destroyed. To use it again you must re-execute the script. Saved configs are NOT deleted.")
 
     API:AddSection("Logo")
     API:AddSlider("ui_logo_size", "Logo Size", 32, 72, 44, function(v)
@@ -4849,19 +4939,16 @@ local function buildUICategory()
         if GL.on then GL.glassRefresh() end
     end, 5)
 
-    API:AddSection("Notifikasi")
-    API:AddSelectMenu("ui_notify_pos", "Posisi Notifikasi", {"Kanan Atas", "Kiri Atas", "Atas", "Bawah"}, "Kanan Atas", function(v)
-        API:SetNotifyPosition(v)
-        if isOpen then API:Info("Posisi notifikasi", v, 2) end
-    end)
+    currentCat = prev
+end
+buildUICategory()
 
-    API:AddSection("Keyboard")
-    API:AddKeyBindInput("ui_menu_key", "Buka/Tutup Menu", "Ctrl", function()
-        API:Toggle()
-    end)
-    API:AddNote("Klik kotak lalu tekan tombol baru.")
+local function buildSettingCategory()
+    local prev = currentCat
+    createCategory("setting", "Setting", true, { order = 9998, noSelect = true, icon = "settings" })
+    currentCat = "setting"
 
-    API:AddSection("Config")
+    API:AddGroup("set_config", "Config (Save / Load)", "save", true)
     local cfgStatus, cfgSelect, cfgName
 
     local function say(ok, text)
@@ -4932,7 +5019,7 @@ local function buildUICategory()
         if deleteArm.name ~= target or os.clock() - deleteArm.at > 4 then
             deleteArm.name, deleteArm.at = target, os.clock()
             say(false, "Tekan Delete lagi (4 detik) untuk menghapus \"" .. target .. "\"")
-            API:Warn("Hapus config?", "Tekan Delete sekali lagi untuk menghapus " .. target, 4)
+            API:Notify({ Title = "Hapus config?", Description = "Tekan Delete sekali lagi untuk menghapus " .. target, Type = "warn", Time = 4, Force = true })
             return
         end
         deleteArm.name = nil
@@ -4948,21 +5035,44 @@ local function buildUICategory()
     end)
 
     cfgStatus = API:AddNote("Status: siap")
+    API:EndGroup()
 
-    API:AddSection("Unload")
+    API:AddGroup("set_notif", "Notifikasi", "bell", false)
+    API:AddToggle("ui_notify_enable", "Aktifkan Notifikasi", true, function(on)
+        API:SetNotifyEnabled(on)
+    end, "switch")
+    API:AddSelectMenu("ui_notify_pos", "Posisi Notifikasi", {"Kanan Atas", "Kiri Atas", "Atas", "Bawah"}, "Kanan Atas", function(v)
+        API:SetNotifyPosition(v)
+        if isOpen then API:Info("Posisi notifikasi", v, 2) end
+    end)
+    API:AddTapToggleOneClick("ui_notify_test", "Tes Notifikasi", function()
+        API:Notify({ Title = "Tes notifikasi", Description = "Posisi: " .. tostring(API:GetNotifyPosition()), Type = "success", Time = 3, Force = true })
+    end)
+    API:EndGroup()
+
+    API:AddGroup("set_keybind", "Keybind Buka/Tutup", "keyboard", false)
+    API:AddKeyBindInput("ui_menu_key", "Buka/Tutup Menu", "Ctrl", function()
+        API:Toggle()
+    end)
+    API:AddNote("Klik kotak lalu tekan tombol baru.")
+    API:EndGroup()
+
+    API:AddGroup("set_unload", "Unload", "power", false)
+    API:AddNote("Note: Unload completely removes this menu and every script loaded through it. All active toggles are switched off, all connections are disconnected and all UI is destroyed. To use it again you must re-execute the script. Saved configs are NOT deleted.")
     local unloadArm = 0
     API:AddTapToggleOneClick("ui_unload", "Unload", function()
         if os.clock() - unloadArm > 4 then
             unloadArm = os.clock()
-            API:Warn("Unload?", "Press Unload again within 4 seconds to remove everything", 4)
+            API:Notify({ Title = "Unload?", Description = "Press Unload again within 4 seconds to remove everything", Type = "warn", Time = 4, Force = true })
             return
         end
         API:Unload()
     end)
+    API:EndGroup()
 
     currentCat = prev
 end
-buildUICategory()
+buildSettingCategory()
 
 local DEV_USERNAME = "BimzDnu"
 
@@ -5096,5 +5206,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.5 module ready")
+print("[BZ] Menu UI v4.5 module ready.")
 return API
