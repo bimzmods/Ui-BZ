@@ -38,6 +38,7 @@ local CFG = {
     MenuWMax  = 720,
     MenuHMax  = 450,
     HeaderH   = 52,
+    SearchH   = 44,
     LogoGap   = 12,
     ScreenPad = 10,
     LogoStart = UDim2.new(0, 40, 0.5, -28),
@@ -465,11 +466,18 @@ end
 
 local contentArea = Instance.new("Frame", menu)
 contentArea.Name = "Content"
-contentArea.Size = UDim2.new(1, 0, 1, -CFG.HeaderH)
-contentArea.Position = UDim2.fromOffset(0, CFG.HeaderH)
+contentArea.Size = UDim2.new(1, 0, 1, -(CFG.HeaderH + CFG.SearchH))
+contentArea.Position = UDim2.fromOffset(0, CFG.HeaderH + CFG.SearchH)
 contentArea.BackgroundTransparency = 1
 contentArea.BorderSizePixel = 0
 contentArea.ClipsDescendants = true
+
+local searchBar = Instance.new("Frame", menu)
+searchBar.Name = "SearchBar"
+searchBar.Size = UDim2.new(1, 0, 0, CFG.SearchH)
+searchBar.Position = UDim2.fromOffset(0, CFG.HeaderH)
+searchBar.BackgroundTransparency = 1
+searchBar.BorderSizePixel = 0
 
 local function makeBody()
     local b = Instance.new("ScrollingFrame", contentArea)
@@ -973,8 +981,10 @@ local function relayout(animate)
     local w = 0
     if tabBar.Visible then w = sideCollapsed and SIDE_C or SIDE_W end
     local sideSize = UDim2.new(0, w, 1, -CFG.HeaderH - (tabBar.Visible and PROFILE_H or 0))
-    local contentPos = UDim2.fromOffset(w, CFG.HeaderH)
-    local contentSize = UDim2.new(1, -w, 1, -CFG.HeaderH)
+    local sidePos = UDim2.fromOffset(w, CFG.HeaderH)
+    local searchSize = UDim2.new(1, -w, 0, CFG.SearchH)
+    local contentPos = UDim2.fromOffset(w, CFG.HeaderH + CFG.SearchH)
+    local contentSize = UDim2.new(1, -w, 1, -(CFG.HeaderH + CFG.SearchH))
     sideLine.Visible = tabBar.Visible
     profile.Visible = tabBar.Visible and not profile:GetAttribute("Min")
     local profSize = UDim2.fromOffset(w, PROFILE_H)
@@ -982,13 +992,16 @@ local function relayout(animate)
         local info = TweenInfo.new(0.2, Enum.EasingStyle.Quart)
         TweenService:Create(tabBar, info, {Size = sideSize}):Play()
         TweenService:Create(contentArea, info, {Position = contentPos, Size = contentSize}):Play()
-        TweenService:Create(sideLine, info, {Position = contentPos}):Play()
+        TweenService:Create(sideLine, info, {Position = sidePos}):Play()
+        TweenService:Create(searchBar, info, {Position = sidePos, Size = searchSize}):Play()
         TweenService:Create(profile, info, {Size = profSize}):Play()
     else
         tabBar.Size = sideSize
         contentArea.Position = contentPos
         contentArea.Size = contentSize
-        sideLine.Position = contentPos
+        sideLine.Position = sidePos
+        searchBar.Position = sidePos
+        searchBar.Size = searchSize
         profile.Size = profSize
     end
 end
@@ -1257,7 +1270,7 @@ local function baseBody()
     return categories[currentCat].body
 end
 
-local COLS = { GAP = 10, BREAK = 500, all = {} }
+local COLS = { GAP = 10, BREAK = 500, all = {}, groupSet = setmetatable({}, { __mode = "k" }) }
 
 function COLS.width()
     local w = menu.Size.X.Offset - 28
@@ -1267,7 +1280,7 @@ end
 
 function COLS.estimate(card)
     if card:GetAttribute("IsGroup") then
-        local h = 44
+        local h = 64
         local clip = card:FindFirstChild("Clip")
         local content = clip and clip.Visible and clip:FindFirstChild("Content")
         if content then
@@ -1396,6 +1409,7 @@ end
 function COLS.newCard(cat, text)
     local card = Instance.new("Frame")
     card.Name = "Card"
+    card:SetAttribute("SearchKind", "card")
     card.Size = UDim2.new(1, 0, 0, 0)
     card.AutomaticSize = Enum.AutomaticSize.Y
     card.BackgroundColor3 = C.Surface
@@ -1443,6 +1457,7 @@ local function currentBody()
     if not cat.flat then
         local f = Instance.new("Frame", body)
         f.Name = "Flat"
+        f:SetAttribute("SearchKind", "flat")
         f.Size = UDim2.new(1, 0, 0, 0)
         f.AutomaticSize = Enum.AutomaticSize.Y
         f.BackgroundTransparency = 1
@@ -1478,6 +1493,157 @@ function API:AddSection(text)
     local card, lbl = COLS.newCard(cat, text)
     cat.card = card
     return lbl or card
+end
+
+do
+    local box = Instance.new("Frame", searchBar)
+    box.Name = "SearchBox"
+    box.Position = UDim2.fromOffset(14, 6)
+    box.Size = UDim2.new(1, -28, 0, 32)
+    box.BackgroundColor3 = C.Surface
+    box.BorderSizePixel = 0
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 10)
+    local boxStroke = Instance.new("UIStroke", box)
+    boxStroke.Color = C.Stroke
+    boxStroke.Thickness = 1
+    boxStroke.Transparency = 0.6
+
+    local ik, iv = resolveIcon("search")
+    local icon
+    if ik == "image" then
+        icon = Instance.new("ImageLabel", box)
+        icon.Image = iv
+        icon.ImageColor3 = C.TextDim
+    else
+        icon = Instance.new("TextLabel", box)
+        icon.Text = "?"
+        icon.Font = FontBold
+        icon.TextSize = 14
+        icon.TextColor3 = C.TextDim
+    end
+    icon.Name = "SearchIcon"
+    icon.AnchorPoint = Vector2.new(0, 0.5)
+    icon.Position = UDim2.new(0, 10, 0.5, 0)
+    icon.Size = UDim2.fromOffset(16, 16)
+    icon.BackgroundTransparency = 1
+
+    local tb = Instance.new("TextBox", box)
+    tb.Name = "SearchInput"
+    tb.Position = UDim2.fromOffset(34, 0)
+    tb.Size = UDim2.new(1, -66, 1, 0)
+    tb.BackgroundTransparency = 1
+    tb.BorderSizePixel = 0
+    tb.ClearTextOnFocus = false
+    tb.Font = Font
+    tb.TextSize = 14
+    tb.TextColor3 = C.Text
+    tb.PlaceholderText = "Cari..."
+    tb.PlaceholderColor3 = C.TextDim
+    tb.TextXAlignment = Enum.TextXAlignment.Left
+    tb.Text = ""
+    tb.ClipsDescendants = true
+
+    local clear = Instance.new("TextButton", box)
+    clear.Name = "SearchClear"
+    clear.AnchorPoint = Vector2.new(1, 0.5)
+    clear.Position = UDim2.new(1, -6, 0.5, 0)
+    clear.Size = UDim2.fromOffset(24, 24)
+    clear.BackgroundTransparency = 1
+    clear.AutoButtonColor = false
+    clear.Text = "×"
+    clear.Font = FontBold
+    clear.TextSize = 20
+    clear.TextColor3 = C.TextDim
+    clear.Visible = false
+
+    tb.Focused:Connect(function()
+        TweenService:Create(boxStroke, TweenInfo.new(0.12), {Color = C.Accent, Transparency = 0.2}):Play()
+    end)
+    tb.FocusLost:Connect(function()
+        TweenService:Create(boxStroke, TweenInfo.new(0.12), {Color = C.Stroke, Transparency = 0.6}):Play()
+    end)
+
+    local function rowText(row)
+        local parts = {}
+        if row:IsA("TextLabel") or row:IsA("TextButton") then parts[#parts + 1] = row.Text end
+        for _, d in ipairs(row:GetDescendants()) do
+            if (d:IsA("TextLabel") or d:IsA("TextButton")) and d.Text ~= "" then
+                parts[#parts + 1] = d.Text
+            end
+        end
+        return table.concat(parts, " "):lower()
+    end
+
+    local function hit(text, q)
+        return text:find(q, 1, true) ~= nil
+    end
+
+    local function apply(raw)
+        local q = (tostring(raw or ""):lower():gsub("^%s+", ""):gsub("%s+$", ""))
+        for _, cat in pairs(categories) do
+            for _, d in ipairs(cat.body:GetDescendants()) do
+                local kind = d:GetAttribute("SearchKind")
+                if kind then
+                    local owner, titleHit = nil, false
+                    if kind == "card" then
+                        owner = d
+                        local t = d:FindFirstChild("CardTitle")
+                        titleHit = q ~= "" and t ~= nil and hit(t.Text:lower(), q)
+                    elseif kind == "group" then
+                        owner = d.Parent and d.Parent.Parent
+                        local head = owner and owner:FindFirstChild("Head")
+                        titleHit = q ~= "" and head ~= nil and hit(rowText(head), q)
+                    end
+                    local any = false
+                    for _, row in ipairs(d:GetChildren()) do
+                        if row:IsA("GuiObject") and row.Name ~= "CardTitle" then
+                            local show = q == "" or titleHit or hit(rowText(row), q)
+                            if show then
+                                if row:GetAttribute("SrchHide") then
+                                    row:SetAttribute("SrchHide", nil)
+                                    row.Visible = true
+                                end
+                                if row.Visible then any = true end
+                            elseif row.Visible then
+                                row:SetAttribute("SrchHide", true)
+                                row.Visible = false
+                            end
+                        end
+                    end
+                    if owner then
+                        local hide = q ~= "" and not (titleHit or any)
+                        if hide then
+                            if owner.Visible then
+                                owner:SetAttribute("SrchHide", true)
+                                owner.Visible = false
+                            end
+                        elseif owner:GetAttribute("SrchHide") then
+                            owner:SetAttribute("SrchHide", nil)
+                            owner.Visible = true
+                        end
+                        if kind == "group" and q ~= "" and any and not titleHit then
+                            local h = COLS.groupSet[owner]
+                            if h and not h:IsOpen() then h:Set(true) end
+                        end
+                    end
+                end
+            end
+        end
+        for _, cols in ipairs(COLS.all) do
+            if cols.holder.Parent then COLS.arrange(cols, true) end
+        end
+    end
+
+    local token = 0
+    tb:GetPropertyChangedSignal("Text"):Connect(function()
+        clear.Visible = tb.Text ~= ""
+        token = token + 1
+        local my = token
+        task.delay(0.15, function()
+            if my == token then apply(tb.Text) end
+        end)
+    end)
+    clear.MouseButton1Click:Connect(function() tb.Text = "" end)
 end
 
 function API:AddBanner(name, titleText, descText, icon)
@@ -1575,6 +1741,18 @@ function API:AddGroup(name, labelText, icon, startOpen)
     holder.BackgroundTransparency = 1
     holder.BorderSizePixel = 0
     holder:SetAttribute("IsGroup", true)
+    holder.BackgroundColor3 = C.Surface
+    holder.BackgroundTransparency = 0.5
+    Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 14)
+    local holderStroke = Instance.new("UIStroke", holder)
+    holderStroke.Color = C.Stroke
+    holderStroke.Thickness = 1
+    holderStroke.Transparency = 0.5
+    local holderPad = Instance.new("UIPadding", holder)
+    holderPad.PaddingTop = UDim.new(0, 10)
+    holderPad.PaddingBottom = UDim.new(0, 10)
+    holderPad.PaddingLeft = UDim.new(0, 10)
+    holderPad.PaddingRight = UDim.new(0, 10)
     cat.card = nil
     COLS.add(cat, holder)
     local hl = Instance.new("UIListLayout", holder)
@@ -1676,7 +1854,8 @@ function API:AddGroup(name, labelText, icon, startOpen)
     cl.SortOrder = Enum.SortOrder.LayoutOrder
     cl.HorizontalAlignment = Enum.HorizontalAlignment.Center
     local cp = Instance.new("UIPadding", content)
-    cp.PaddingLeft = UDim.new(0, 8)
+    cp.PaddingLeft = UDim.new(0, 0)
+    content:SetAttribute("SearchKind", "group")
 
     local ANIM = TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     local FAST = TweenInfo.new(0.15, Enum.EasingStyle.Quart)
@@ -1758,6 +1937,7 @@ function API:AddGroup(name, labelText, icon, startOpen)
     registry[name] = { kind = "group", row = holder }
 
     local handle = { row = holder, content = content }
+    COLS.groupSet[holder] = handle
     function handle:Set(v, instant) setOpen(v, instant) end
     function handle:Toggle() setOpen(not open) end
     function handle:IsOpen() return open end
@@ -5437,5 +5617,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.6 module ready.")
+print("[BZ] Menu UI v4.6 module ready")
 return API
