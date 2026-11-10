@@ -189,8 +189,9 @@ local menuStroke = Instance.new("UIStroke", menu)
 menuStroke.Color = Color3.new(1, 1, 1)
 menuStroke.Thickness = 1.5
 menuStroke.Transparency = 0.2
+local menuStrokeGrad
 do
-local menuStrokeGrad = Instance.new("UIGradient", menuStroke)
+menuStrokeGrad = Instance.new("UIGradient", menuStroke)
 menuStrokeGrad.Rotation = 45
 menuStrokeGrad.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, C.Text),
@@ -281,7 +282,7 @@ versionLabel = Instance.new("TextLabel", versionPill)
 versionLabel.Size = UDim2.new(0, 0, 1, 0)
 versionLabel.AutomaticSize = Enum.AutomaticSize.X
 versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "v4.5"
+versionLabel.Text = "v4.6"
 versionLabel.Font = FontBold
 versionLabel.TextSize = 10
 versionLabel.TextColor3 = C.Bg
@@ -408,7 +409,7 @@ profile.AnchorPoint = Vector2.new(0, 1)
 profile.Position = UDim2.new(0, 0, 1, 0)
 profile.Size = UDim2.fromOffset(SIDE_W, PROFILE_H)
 profile.BackgroundColor3 = C.Bg
-profile.BackgroundTransparency = 0
+profile.BackgroundTransparency = 1
 profile.BorderSizePixel = 0
 profile.ClipsDescendants = true
 profile.Visible = false
@@ -1256,26 +1257,227 @@ local function baseBody()
     return categories[currentCat].body
 end
 
+local COLS = { GAP = 10, BREAK = 500, all = {} }
+
+function COLS.width()
+    local w = menu.Size.X.Offset - 28
+    if tabBar.Visible then w = w - (sideCollapsed and SIDE_C or SIDE_W) end
+    return w
+end
+
+function COLS.estimate(card)
+    if card:GetAttribute("IsGroup") then
+        local h = 44
+        local clip = card:FindFirstChild("Clip")
+        local content = clip and clip.Visible and clip:FindFirstChild("Content")
+        if content then
+            for _, ch in ipairs(content:GetChildren()) do
+                if ch:IsA("GuiObject") then
+                    local oh = ch.Size.Y.Offset
+                    if oh <= 0 then oh = 44 end
+                    h = h + oh + 8
+                end
+            end
+            h = h + 8
+        end
+        return h
+    end
+    local h = 20
+    for _, ch in ipairs(card:GetChildren()) do
+        if ch:IsA("GuiObject") and ch.Visible then
+            local oh = ch.Size.Y.Offset
+            if oh <= 0 then oh = ch.AbsoluteSize.Y end
+            if oh <= 0 then oh = 44 end
+            h = h + oh + 8
+        end
+    end
+    return h
+end
+
+function COLS.arrange(cols, force)
+    local w = COLS.width()
+    local wide
+    if cols.wide == nil then
+        wide = w >= COLS.BREAK
+    elseif cols.wide then
+        wide = w >= COLS.BREAK - 20
+    else
+        wide = w >= COLS.BREAK + 20
+    end
+    if not force and wide == cols.wide then return end
+    cols.wide = wide
+    cols.layout.Padding = UDim.new(0, wide and COLS.GAP or 0)
+    cols.left.Size = wide and UDim2.new(0.5, -COLS.GAP / 2, 0, 0) or UDim2.new(1, 0, 0, 0)
+    cols.right.Visible = wide
+    local hL, hR = 0, 0
+    for i, card in ipairs(cols.cards) do
+        card.LayoutOrder = i
+        local target = cols.left
+        if wide then
+            local est = COLS.estimate(card) + 12
+            if hL <= hR then
+                hL = hL + est
+            else
+                target = cols.right
+                hR = hR + est
+            end
+        end
+        if card.Parent ~= target then card.Parent = target end
+    end
+end
+
+function COLS.schedule(cols)
+    if cols.pending then return end
+    cols.pending = true
+    task.defer(function()
+        cols.pending = false
+        if cols.holder.Parent then COLS.arrange(cols, true) end
+    end)
+end
+
+function COLS.refresh()
+    for _, cols in ipairs(COLS.all) do
+        if cols.holder.Parent then COLS.arrange(cols, false) end
+    end
+end
+menu:GetPropertyChangedSignal("Size"):Connect(COLS.refresh)
+sideLine:GetPropertyChangedSignal("Position"):Connect(COLS.refresh)
+
+function COLS.ensure(cat)
+    if cat.cols then return cat.cols end
+    cat.flat = nil
+    cat.card = nil
+
+    local holder = Instance.new("Frame", cat.body)
+    holder.Name = "Columns"
+    holder.Size = UDim2.new(1, 0, 0, 0)
+    holder.AutomaticSize = Enum.AutomaticSize.Y
+    holder.BackgroundTransparency = 1
+    holder.BorderSizePixel = 0
+    holder.LayoutOrder = nextOrder()
+    local hl = Instance.new("UIListLayout", holder)
+    hl.FillDirection = Enum.FillDirection.Horizontal
+    hl.SortOrder = Enum.SortOrder.LayoutOrder
+    hl.VerticalAlignment = Enum.VerticalAlignment.Top
+    hl.Padding = UDim.new(0, COLS.GAP)
+
+    local function mkCol(name, order)
+        local f = Instance.new("Frame", holder)
+        f.Name = name
+        f.LayoutOrder = order
+        f.Size = UDim2.new(0.5, -COLS.GAP / 2, 0, 0)
+        f.AutomaticSize = Enum.AutomaticSize.Y
+        f.BackgroundTransparency = 1
+        f.BorderSizePixel = 0
+        local l = Instance.new("UIListLayout", f)
+        l.SortOrder = Enum.SortOrder.LayoutOrder
+        l.Padding = UDim.new(0, 12)
+        return f
+    end
+
+    local cols = {
+        holder = holder, layout = hl,
+        left = mkCol("Left", 1), right = mkCol("Right", 2),
+        cards = {},
+    }
+    cat.cols = cols
+    COLS.all[#COLS.all + 1] = cols
+    return cols
+end
+
+function COLS.add(cat, inst)
+    local cols = COLS.ensure(cat)
+    cols.cards[#cols.cards + 1] = inst
+    inst.LayoutOrder = #cols.cards
+    inst.Parent = cols.left
+    COLS.schedule(cols)
+end
+
+function COLS.newCard(cat, text)
+    local card = Instance.new("Frame")
+    card.Name = "Card"
+    card.Size = UDim2.new(1, 0, 0, 0)
+    card.AutomaticSize = Enum.AutomaticSize.Y
+    card.BackgroundColor3 = C.Surface
+    card.BackgroundTransparency = 0.5
+    card.BorderSizePixel = 0
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 14)
+    local st = Instance.new("UIStroke", card)
+    st.Color = C.Stroke
+    st.Thickness = 1
+    st.Transparency = 0.5
+    local pad = Instance.new("UIPadding", card)
+    pad.PaddingTop = UDim.new(0, 10)
+    pad.PaddingBottom = UDim.new(0, 10)
+    pad.PaddingLeft = UDim.new(0, 10)
+    pad.PaddingRight = UDim.new(0, 10)
+    local lay = Instance.new("UIListLayout", card)
+    lay.SortOrder = Enum.SortOrder.LayoutOrder
+    lay.Padding = UDim.new(0, 8)
+
+    local lbl
+    if text and text ~= "" then
+        lbl = Instance.new("TextLabel", card)
+        lbl.Name = "CardTitle"
+        lbl.LayoutOrder = 0
+        lbl.Size = UDim2.new(1, 0, 0, 22)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = text
+        lbl.Font = FontBold
+        lbl.TextSize = 15
+        lbl.TextColor3 = C.Text
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.TextYAlignment = Enum.TextYAlignment.Center
+        lbl.TextTruncate = Enum.TextTruncate.AtEnd
+        Instance.new("UIPadding", lbl).PaddingLeft = UDim.new(0, 4)
+    end
+    COLS.add(cat, card)
+    return card, lbl
+end
+
 local function currentBody()
     local body = baseBody()
-    local g = categories[currentCat].group
-    if g then return g.content end
-    return body
+    local cat = categories[currentCat]
+    if cat.group then return cat.group.content end
+    if cat.card then return cat.card end
+    if not cat.flat then
+        local f = Instance.new("Frame", body)
+        f.Name = "Flat"
+        f.Size = UDim2.new(1, 0, 0, 0)
+        f.AutomaticSize = Enum.AutomaticSize.Y
+        f.BackgroundTransparency = 1
+        f.BorderSizePixel = 0
+        f.LayoutOrder = nextOrder()
+        local l = Instance.new("UIListLayout", f)
+        l.SortOrder = Enum.SortOrder.LayoutOrder
+        l.Padding = UDim.new(0, 8)
+        l.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        cat.flat = f
+        cat.cols = nil
+    end
+    return cat.flat
 end
 
 function API:AddSection(text)
-    local lbl = Instance.new("TextLabel", currentBody())
-    lbl.Size = UDim2.new(1, 0, 0, 22)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = string.upper(text)
-    lbl.Font = Font
-    lbl.TextSize = 12
-    lbl.TextColor3 = C.TextDim
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.TextYAlignment = Enum.TextYAlignment.Bottom
-    lbl.LayoutOrder = nextOrder()
-    Instance.new("UIPadding", lbl).PaddingLeft = UDim.new(0, 6)
-    return lbl
+    baseBody()
+    local cat = categories[currentCat]
+    if cat.group then
+        local lbl = Instance.new("TextLabel", cat.group.content)
+        lbl.Size = UDim2.new(1, 0, 0, 22)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = string.upper(text)
+        lbl.Font = Font
+        lbl.TextSize = 12
+        lbl.TextColor3 = C.TextDim
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.TextYAlignment = Enum.TextYAlignment.Bottom
+        lbl.LayoutOrder = nextOrder()
+        Instance.new("UIPadding", lbl).PaddingLeft = UDim.new(0, 6)
+        return lbl
+    end
+    local card, lbl = COLS.newCard(cat, text)
+    cat.card = card
+    return lbl or card
 end
 
 function API:AddBanner(name, titleText, descText, icon)
@@ -1366,13 +1568,15 @@ function API:AddGroup(name, labelText, icon, startOpen)
     local order = nextOrder()
     local open = startOpen and true or false
 
-    local holder = Instance.new("Frame", cat.body)
+    local holder = Instance.new("Frame")
     holder.Name = name .. "_Group"
     holder.Size = UDim2.new(1, 0, 0, 0)
     holder.AutomaticSize = Enum.AutomaticSize.Y
     holder.BackgroundTransparency = 1
     holder.BorderSizePixel = 0
-    holder.LayoutOrder = order
+    holder:SetAttribute("IsGroup", true)
+    cat.card = nil
+    COLS.add(cat, holder)
     local hl = Instance.new("UIListLayout", holder)
     hl.Padding = UDim.new(0, 0)
     hl.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1563,6 +1767,8 @@ end
 function API:EndGroup()
     if currentCat and categories[currentCat] then
         categories[currentCat].group = nil
+        categories[currentCat].card = nil
+        categories[currentCat].flat = nil
     end
 end
 
@@ -3652,6 +3858,8 @@ function API:Open()
         bottomEdge.Visible = true
         profile:SetAttribute("Min", false)
         profile.Visible = tabBar.Visible
+        headerLine.Visible = true
+        menuStrokeGrad.Rotation = 45
     end
     if lastPos then
         menu.Position = clampPos(lastPos, targetSize)
@@ -3824,6 +4032,8 @@ local function setMinimized(on)
         bottomEdge.Visible = false
         profile:SetAttribute("Min", true)
         profile.Visible = false
+        headerLine.Visible = false
+        TweenService:Create(menuStrokeGrad, info, {Rotation = 0}):Play()
         TweenService:Create(menu, info, {Size = UDim2.fromOffset(menu.AbsoluteSize.X, CFG.HeaderH)}):Play()
     else
         win.minimized = false
@@ -3831,6 +4041,8 @@ local function setMinimized(on)
         bottomEdge.Visible = true
         profile:SetAttribute("Min", false)
         profile.Visible = tabBar.Visible
+        headerLine.Visible = true
+        TweenService:Create(menuStrokeGrad, info, {Rotation = 45}):Play()
         TweenService:Create(menu, info, {Size = win.preMinSize or lastSize or defaultMenuSize()}):Play()
     end
 end
@@ -4427,7 +4639,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v4.5"
+local BZ_VERSION = "v4.6"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown" }
 local logoSizeValue = 44
 local deskripsiText, versionShow = TEXT_DEFAULTS.Deskripsi, true
@@ -5192,6 +5404,25 @@ function API:SetLangURL(url)
     return true
 end
 
+do
+    local aliases = {
+        AddTap = "AddTapToggleOneClick", AddButton = "AddTapToggleOneClick",
+        AddClick = "AddTapToggleOneClick", AddOneClick = "AddTapToggleOneClick",
+        AddSwitch = "AddToggle",
+        AddSelect = "AddSelectMenu", AddDropdown = "AddSelectMenu",
+        AddMultiSelect = "AddMultiSelectMenu", AddMultiDropdown = "AddMultiSelectMenu",
+        AddInput = "AddInputText", AddTextBox = "AddInputText",
+        AddColor = "AddColorPicker",
+        AddLabel = "AddNote", AddParagraph = "AddNote",
+        AddTab = "AddCategory", AddCard = "AddSection", AddFolder = "AddGroup",
+    }
+    for alias, real in pairs(aliases) do
+        if rawget(API, alias) == nil and rawget(API, real) ~= nil then
+            rawset(API, alias, rawget(API, real))
+        end
+    end
+end
+
 local missingSeen = {}
 setmetatable(API, {
     __call = function(self) return self end,
@@ -5206,5 +5437,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.5 module ready.")
+print("[BZ] Menu UI v4.6 module ready.")
 return API
