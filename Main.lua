@@ -1485,8 +1485,8 @@ end
 do
     local box = Instance.new("Frame", header)
     box.Name = "SearchBox"
-    box.AnchorPoint = Vector2.new(1, 0)
-    box.Position = UDim2.new(1, -116, 0, 10)
+    box.AnchorPoint = Vector2.new(0.5, 0)
+    box.Position = UDim2.new(0.5, 0, 0, 10)
     box.Size = UDim2.fromOffset(200, 32)
     box.BackgroundColor3 = C.Surface
     box.BorderSizePixel = 0
@@ -1553,13 +1553,15 @@ do
 
     local function layoutBox()
         local textW = math.max(title.TextBounds.X + 8 + versionLabel.TextBounds.X + 14, subtitle.TextBounds.X)
-        local avail = menu.Size.X.Offset - (58 + textW + 16) - 116
-        if profile:GetAttribute("Min") or avail < 90 then
+        local W = menu.Size.X.Offset
+        local half = math.min(W / 2 - (58 + textW + 16), (W - 116) - W / 2)
+        local width = math.min(240, half * 2)
+        if profile:GetAttribute("Min") or width < 90 then
             box.Visible = false
             return
         end
         box.Visible = true
-        box.Size = UDim2.fromOffset(math.min(avail, 240), 32)
+        box.Size = UDim2.fromOffset(width, 32)
     end
     title:GetPropertyChangedSignal("TextBounds"):Connect(layoutBox)
     versionLabel:GetPropertyChangedSignal("TextBounds"):Connect(layoutBox)
@@ -5622,5 +5624,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.6 module ready.")
+print("[BZ] Menu UI v4.6 module ready")
 return API
