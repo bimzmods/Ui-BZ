@@ -38,7 +38,6 @@ local CFG = {
     MenuWMax  = 720,
     MenuHMax  = 450,
     HeaderH   = 52,
-    SearchH   = 44,
     LogoGap   = 12,
     ScreenPad = 10,
     LogoStart = UDim2.new(0, 40, 0.5, -28),
@@ -466,18 +465,11 @@ end
 
 local contentArea = Instance.new("Frame", menu)
 contentArea.Name = "Content"
-contentArea.Size = UDim2.new(1, 0, 1, -(CFG.HeaderH + CFG.SearchH))
-contentArea.Position = UDim2.fromOffset(0, CFG.HeaderH + CFG.SearchH)
+contentArea.Size = UDim2.new(1, 0, 1, -CFG.HeaderH)
+contentArea.Position = UDim2.fromOffset(0, CFG.HeaderH)
 contentArea.BackgroundTransparency = 1
 contentArea.BorderSizePixel = 0
 contentArea.ClipsDescendants = true
-
-local searchBar = Instance.new("Frame", menu)
-searchBar.Name = "SearchBar"
-searchBar.Size = UDim2.new(1, 0, 0, CFG.SearchH)
-searchBar.Position = UDim2.fromOffset(0, CFG.HeaderH)
-searchBar.BackgroundTransparency = 1
-searchBar.BorderSizePixel = 0
 
 local function makeBody()
     local b = Instance.new("ScrollingFrame", contentArea)
@@ -981,10 +973,8 @@ local function relayout(animate)
     local w = 0
     if tabBar.Visible then w = sideCollapsed and SIDE_C or SIDE_W end
     local sideSize = UDim2.new(0, w, 1, -CFG.HeaderH - (tabBar.Visible and PROFILE_H or 0))
-    local sidePos = UDim2.fromOffset(w, CFG.HeaderH)
-    local searchSize = UDim2.new(1, -w, 0, CFG.SearchH)
-    local contentPos = UDim2.fromOffset(w, CFG.HeaderH + CFG.SearchH)
-    local contentSize = UDim2.new(1, -w, 1, -(CFG.HeaderH + CFG.SearchH))
+    local contentPos = UDim2.fromOffset(w, CFG.HeaderH)
+    local contentSize = UDim2.new(1, -w, 1, -CFG.HeaderH)
     sideLine.Visible = tabBar.Visible
     profile.Visible = tabBar.Visible and not profile:GetAttribute("Min")
     local profSize = UDim2.fromOffset(w, PROFILE_H)
@@ -992,16 +982,13 @@ local function relayout(animate)
         local info = TweenInfo.new(0.2, Enum.EasingStyle.Quart)
         TweenService:Create(tabBar, info, {Size = sideSize}):Play()
         TweenService:Create(contentArea, info, {Position = contentPos, Size = contentSize}):Play()
-        TweenService:Create(sideLine, info, {Position = sidePos}):Play()
-        TweenService:Create(searchBar, info, {Position = sidePos, Size = searchSize}):Play()
+        TweenService:Create(sideLine, info, {Position = contentPos}):Play()
         TweenService:Create(profile, info, {Size = profSize}):Play()
     else
         tabBar.Size = sideSize
         contentArea.Position = contentPos
         contentArea.Size = contentSize
-        sideLine.Position = sidePos
-        searchBar.Position = sidePos
-        searchBar.Size = searchSize
+        sideLine.Position = contentPos
         profile.Size = profSize
     end
 end
@@ -1496,10 +1483,11 @@ function API:AddSection(text)
 end
 
 do
-    local box = Instance.new("Frame", searchBar)
+    local box = Instance.new("Frame", header)
     box.Name = "SearchBox"
-    box.Position = UDim2.fromOffset(14, 6)
-    box.Size = UDim2.new(1, -28, 0, 32)
+    box.AnchorPoint = Vector2.new(1, 0)
+    box.Position = UDim2.new(1, -116, 0, 10)
+    box.Size = UDim2.fromOffset(200, 32)
     box.BackgroundColor3 = C.Surface
     box.BorderSizePixel = 0
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 10)
@@ -1562,6 +1550,23 @@ do
     tb.FocusLost:Connect(function()
         TweenService:Create(boxStroke, TweenInfo.new(0.12), {Color = C.Stroke, Transparency = 0.6}):Play()
     end)
+
+    local function layoutBox()
+        local textW = math.max(title.TextBounds.X + 8 + versionLabel.TextBounds.X + 14, subtitle.TextBounds.X)
+        local avail = menu.Size.X.Offset - (58 + textW + 16) - 116
+        if profile:GetAttribute("Min") or avail < 90 then
+            box.Visible = false
+            return
+        end
+        box.Visible = true
+        box.Size = UDim2.fromOffset(math.min(avail, 240), 32)
+    end
+    title:GetPropertyChangedSignal("TextBounds"):Connect(layoutBox)
+    versionLabel:GetPropertyChangedSignal("TextBounds"):Connect(layoutBox)
+    subtitle:GetPropertyChangedSignal("TextBounds"):Connect(layoutBox)
+    menu:GetPropertyChangedSignal("Size"):Connect(layoutBox)
+    profile:GetAttributeChangedSignal("Min"):Connect(layoutBox)
+    layoutBox()
 
     local function rowText(row)
         local parts = {}
@@ -5617,5 +5622,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.6 module ready")
+print("[BZ] Menu UI v4.6 module ready.")
 return API
