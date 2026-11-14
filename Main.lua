@@ -46,7 +46,7 @@ local CFG = {
     LangFile = "BZ Menu/lang.txt",
     LangCache = "BZ Menu/cache/lang_pack.json",
     CacheDir = "BZ Menu/cache",
-    ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json", 
+    ConfigFile = "BZ Menu/BZ_" .. tostring(game.GameId) .. "_Config.json",
 }
 
 CFG.GameKey = tostring(game.GameId ~= 0 and game.GameId or game.PlaceId)
@@ -842,7 +842,6 @@ end
 end
 
 function Lang.T(text) return Lang:Translate(tostring(text)) end
-
 
 local categories = {}
 local categoryOrder = 0
@@ -4208,7 +4207,6 @@ API._connect(UserInputService.InputEnded, function(input)
     end
 end)
 
-
 local function setMinimized(on)
     if on == win.minimized then return end
     local info = TweenInfo.new(0.2, Enum.EasingStyle.Quart)
@@ -5210,7 +5208,6 @@ local function buildHomeCategory()
 end
 buildHomeCategory()
 
-
 local GL = { on = false, alpha = 0.4, map = {}, sheen = nil }
 
 function GL.glassTarget(inst)
@@ -5279,7 +5276,6 @@ local function buildUICategory()
     local prev = currentCat
     createCategory("ui", "UI", true, { order = 9997, noSelect = true, icon = "palette" })
     currentCat = "ui"
-
 
     API:AddSection("Logo")
     API:AddSlider("ui_logo_size", "Logo Size", 32, 72, 44, function(v)
@@ -5619,10 +5615,6 @@ local function buildDevTools()
 end
 buildDevTools()
 
--- =========================================================
--- Category Console (JLine-style) - dibungkus xpcall(function)
--- supaya TIDAK menambah local di scope utama (limit Luau 200 local).
--- =========================================================
 xpcall(function()
     local LogService = game:GetService("LogService")
     local MAXLOG, MAXROWS, RAWLINES = 2000, 300, 400
@@ -5657,7 +5649,6 @@ xpcall(function()
         return "print"
     end
 
-    -- ---------- buffer ----------
     local function push(msg, kind, ts)
         msg = tostring(msg):gsub("\r", "")
         if #msg > 8000 then msg = msg:sub(1, 8000) .. " ...(dipotong)" end
@@ -5721,7 +5712,6 @@ xpcall(function()
         return s
     end
 
-    -- ---------- UI ----------
     createCategory("console", "Console", true, { order = 9996, noSelect = true, icon = "terminal" })
     local cat = categories["console"]
     local body = cat.body
@@ -5825,7 +5815,7 @@ xpcall(function()
     rawBox.TextYAlignment = Enum.TextYAlignment.Top
     rawBox.Text = ""
     pcall(function() rawBox.TextEditable = false end)
-    Lang.items[rawBox] = { applied = {} } -- log mentah: jangan diterjemahkan
+    Lang.items[rawBox] = { applied = {} }
     rawBox.Parent = rawScroll
 
     local status = Instance.new("TextLabel", root)
@@ -5876,7 +5866,6 @@ xpcall(function()
         return b
     end
 
-    -- ---------- scroll helpers ----------
     local function curScroll() return S.raw and rawScroll or list end
     local function atBottom()
         local sc = curScroll()
@@ -5889,7 +5878,6 @@ xpcall(function()
         end)
     end
 
-    -- ---------- render ----------
     local refreshUI
 
     local function paintRow(rw)
@@ -5936,7 +5924,7 @@ xpcall(function()
         local p = Instance.new("UIPadding", r)
         p.PaddingLeft = UDim.new(0, 4); p.PaddingRight = UDim.new(0, 4)
         p.PaddingTop = UDim.new(0, 1); p.PaddingBottom = UDim.new(0, 1)
-        Lang.items[r] = { applied = {} } -- log mentah: jangan diterjemahkan
+        Lang.items[r] = { applied = {} }
         local rw = { e = e, r = r }
         r.MouseButton1Click:Connect(function()
             if S.selMode then toggleSel(rw) end
@@ -6006,7 +5994,6 @@ xpcall(function()
         if near then scrollEnd() end
     end
 
-    -- ---------- actions ----------
     local function collect(onlySel)
         local out = {}
         for _, e in ipairs(S.buf) do
@@ -6071,7 +6058,7 @@ xpcall(function()
 
     local function chipClick(k)
         if allOn() then
-            for _, t in ipairs(TYPES) do S.on[t] = (t == k) end -- solo
+            for _, t in ipairs(TYPES) do S.on[t] = (t == k) end
         else
             S.on[k] = not S.on[k]
             local any = false
@@ -6081,7 +6068,6 @@ xpcall(function()
         rebuild()
     end
 
-    -- ---------- toolbar ----------
     local chips = {}
     chips.all = mkBtn(chipsRow, "Semua", 0, function()
         for _, t in ipairs(TYPES) do S.on[t] = true end
@@ -6135,7 +6121,7 @@ xpcall(function()
         if S.search then
             box:CaptureFocus()
         else
-            box.Text = "" -- memicu rebuild lewat event Text
+            box.Text = ""
         end
         refreshUI()
     end)
@@ -6201,7 +6187,6 @@ xpcall(function()
         status.Text = t
     end
 
-    -- ---------- hook LogService ----------
     local okH, hist = pcall(function() return LogService:GetLogHistory() end)
     if okH and type(hist) == "table" then
         for i = math.max(1, #hist - MAXLOG + 1), #hist do
@@ -6239,7 +6224,6 @@ xpcall(function()
 end, function(err)
     warn("[BZ] Console gagal dibuat: " .. tostring(err))
 end)
-
 
 Lang:Track(screenGui)
 Lang:Refresh()
