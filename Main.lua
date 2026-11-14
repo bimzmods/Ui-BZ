@@ -282,7 +282,7 @@ versionLabel = Instance.new("TextLabel", versionPill)
 versionLabel.Size = UDim2.new(0, 0, 1, 0)
 versionLabel.AutomaticSize = Enum.AutomaticSize.X
 versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "v4.7"
+versionLabel.Text = "v4.8"
 versionLabel.Font = FontBold
 versionLabel.TextSize = 10
 versionLabel.TextColor3 = C.Bg
@@ -4826,7 +4826,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v4.7"
+local BZ_VERSION = "v4.8"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown" }
 local logoSizeValue = 44
 local deskripsiText, versionShow = TEXT_DEFAULTS.Deskripsi, true
@@ -5337,6 +5337,51 @@ local function buildUICategory()
         GL.alpha = v / 100
         if GL.on then GL.glassRefresh() end
     end, 5)
+
+    API:AddSection("Gaya Toggle")
+    API:AddSelectMenu("ui_toggle_style", "Gaya Toggle", { "Switch", "Checkbox", "Radio", "Pill", "Button" }, "Switch", function(v)
+        API:SetDefaultToggleStyle(v)
+        for _, e in pairs(registry) do
+            if e.kind == "toggle" and e.setStyle then pcall(e.setStyle, v) end
+        end
+    end)
+
+    API:AddSection("Font")
+    local FONT_SETS = {
+        ["Builder Sans"] = { "BuilderSans", "BuilderSansBold" },
+        ["Builder Sans Tebal"] = { "BuilderSansMedium", "BuilderSansExtraBold" },
+        ["Gotham"] = { "GothamMedium", "GothamBold" },
+        ["Gotham Black"] = { "GothamMedium", "GothamBlack" },
+        ["Source Sans"] = { "SourceSans", "SourceSansBold" },
+        ["Arial"] = { "Arial", "ArialBold" },
+    }
+    local fontNames = {}
+    for _, n in ipairs({ "Builder Sans", "Builder Sans Tebal", "Gotham", "Gotham Black", "Source Sans", "Arial" }) do
+        local s = FONT_SETS[n]
+        local okR, fr = pcall(function() return Enum.Font[s[1]] end)
+        local okB, fb = pcall(function() return Enum.Font[s[2]] end)
+        if okR and okB and fr and fb then
+            s[1], s[2] = fr, fb
+            table.insert(fontNames, n)
+        end
+    end
+    API:AddSelectMenu("ui_font", "Font", fontNames, "Builder Sans", function(v)
+        local set = FONT_SETS[v]
+        if not set or typeof(set[1]) ~= "EnumItem" then return end
+        local oldR, oldB, newR, newB = Font, FontBold, set[1], set[2]
+        if oldR == newR and oldB == newB then return end
+        Font, FontBold, CFG.Font, CFG.FontBold = newR, newB, newR, newB
+        local function remap(rootGui)
+            for _, d in ipairs(rootGui:GetDescendants()) do
+                if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
+                    local f = d.Font
+                    if f == oldR then d.Font = newR elseif f == oldB then d.Font = newB end
+                end
+            end
+        end
+        remap(screenGui)
+        if pickerGui then remap(pickerGui) end
+    end)
 
     currentCat = prev
 end
@@ -6246,5 +6291,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.7 module ready")
+print("[BZ] Menu UI v4.8 module ready")
 return API
