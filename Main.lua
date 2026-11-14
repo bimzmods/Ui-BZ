@@ -282,7 +282,7 @@ versionLabel = Instance.new("TextLabel", versionPill)
 versionLabel.Size = UDim2.new(0, 0, 1, 0)
 versionLabel.AutomaticSize = Enum.AutomaticSize.X
 versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "v4.6"
+versionLabel.Text = "v4.7"
 versionLabel.Font = FontBold
 versionLabel.TextSize = 10
 versionLabel.TextColor3 = C.Bg
@@ -4826,7 +4826,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v4.6"
+local BZ_VERSION = "v4.7"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown" }
 local logoSizeValue = 44
 local deskripsiText, versionShow = TEXT_DEFAULTS.Deskripsi, true
@@ -5574,6 +5574,628 @@ local function buildDevTools()
 end
 buildDevTools()
 
+-- =========================================================
+-- Category Console (JLine-style) - dibungkus xpcall(function)
+-- supaya TIDAK menambah local di scope utama (limit Luau 200 local).
+-- =========================================================
+xpcall(function()
+    local LogService = game:GetService("LogService")
+    local MAXLOG, MAXROWS, RAWLINES = 2000, 300, 400
+    local DIR = CFG.CacheDir .. "/Console"
+    local TYPES = { "print", "info", "warn", "error" }
+    local NAMES = { print = "Print", info = "Info", warn = "Warn", error = "Error" }
+    local TAG = { print = "PRINT", info = "INFO", warn = "WARN", error = "ERROR" }
+    local COL = {
+        info = Color3.fromRGB(90, 170, 255),
+        warn = Color3.fromRGB(255, 200, 60),
+        error = Color3.fromRGB(255, 95, 95),
+    }
+    local S = {
+        buf = {}, nid = 0, last = 0, match = 0, stale = true, trimmed = false,
+        cnt = { print = 0, info = 0, warn = 0, error = 0 },
+        on = { print = true, info = true, warn = true, error = true },
+        q = "", ql = "", case = false, pat = false, bad = false, tk = 0,
+        time = true, selMode = false, sel = {}, nsel = 0, raw = false,
+        search = false, rows = {}, saved = nil,
+    }
+
+    local function colOf(k) return COL[k] or C.Text end
+    local function esc(s) return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")) end
+    local function hms(t)
+        local ok, s = pcall(os.date, "%H:%M:%S", t)
+        return ok and s or "--:--:--"
+    end
+    local function kindOf(mt)
+        if mt == Enum.MessageType.MessageError then return "error" end
+        if mt == Enum.MessageType.MessageWarning then return "warn" end
+        if mt == Enum.MessageType.MessageInfo then return "info" end
+        return "print"
+    end
+
+    -- ---------- buffer ----------
+    local function push(msg, kind, ts)
+        msg = tostring(msg):gsub("\r", "")
+        if #msg > 8000 then msg = msg:sub(1, 8000) .. " ...(dipotong)" end
+        S.nid = S.nid + 1
+        local e = { id = S.nid, k = kind, m = msg, t = tonumber(ts) or os.time() }
+        local b = S.buf
+        b[#b + 1] = e
+        S.cnt[kind] = S.cnt[kind] + 1
+        if #b > MAXLOG + 200 then
+            local n = #b
+            for i = 1, 200 do
+                local o = b[i]
+                S.cnt[o.k] = S.cnt[o.k] - 1
+                if S.sel[o.id] then S.sel[o.id] = nil; S.nsel = S.nsel - 1 end
+            end
+            table.move(b, 201, n, 1)
+            for i = n - 199, n do b[i] = nil end
+            S.trimmed = true
+        end
+    end
+
+    local function passes(e)
+        if not S.on[e.k] then return false end
+        if S.q == "" then return true end
+        if S.pat then
+            local ok, r = pcall(string.find, e.m, S.q)
+            if not ok then S.bad = true return false end
+            return r ~= nil
+        end
+        if S.case then return string.find(e.m, S.q, 1, true) ~= nil end
+        e.lm = e.lm or string.lower(e.m)
+        return string.find(e.lm, S.ql, 1, true) ~= nil
+    end
+
+    local function plain(e)
+        return "[" .. hms(e.t) .. "] [" .. TAG[e.k] .. "] " .. e.m
+    end
+
+    local function lineText(e)
+        local m, out, pos = e.m, {}, 1
+        if S.q ~= "" then
+            local hay, needle, n = m, S.q, 0
+            if not S.pat and not S.case then
+                e.lm = e.lm or string.lower(m)
+                hay, needle = e.lm, S.ql
+            end
+            while n < 30 do
+                local ok, s, f = pcall(string.find, hay, needle, pos, not S.pat)
+                if not ok or not s or f < s then break end
+                out[#out + 1] = esc(m:sub(pos, s - 1))
+                out[#out + 1] = '<mark color="#FFC83C" transparency="0.55">' .. esc(m:sub(s, f)) .. "</mark>"
+                pos, n = f + 1, n + 1
+            end
+        end
+        out[#out + 1] = esc(m:sub(pos))
+        local s = table.concat(out)
+        if S.time then
+            e.h = e.h or hms(e.t)
+            s = '<font color="#8E8E9A">' .. e.h .. "</font> " .. s
+        end
+        return s
+    end
+
+    -- ---------- UI ----------
+    createCategory("console", "Console", true, { order = 9996, noSelect = true, icon = "terminal" })
+    local cat = categories["console"]
+    local body = cat.body
+    for _, ch in ipairs(body:GetChildren()) do
+        if ch:IsA("UIListLayout") or ch:IsA("UIPadding") then ch:Destroy() end
+    end
+    body.ScrollingEnabled = false
+    body.AutomaticCanvasSize = Enum.AutomaticSize.None
+    body.CanvasSize = UDim2.fromScale(1, 1)
+
+    local root = Instance.new("Frame", body)
+    root.Name = "ConsoleRoot"
+    root.Size = UDim2.fromScale(1, 1)
+    root.BackgroundTransparency = 1
+    root.BorderSizePixel = 0
+    local rp = Instance.new("UIPadding", root)
+    rp.PaddingTop = UDim.new(0, 10); rp.PaddingBottom = UDim.new(0, 8)
+    rp.PaddingLeft = UDim.new(0, 12); rp.PaddingRight = UDim.new(0, 12)
+
+    local function card(parent, name)
+        local f = Instance.new("Frame", parent)
+        f.Name = name
+        f.BackgroundColor3 = C.Surface
+        f.BorderSizePixel = 0
+        Instance.new("UICorner", f).CornerRadius = UDim.new(0, 12)
+        local st = Instance.new("UIStroke", f)
+        st.Color = C.Stroke; st.Thickness = 1; st.Transparency = 0.6
+        return f
+    end
+
+    local function wrapRow(parent, order)
+        local f = Instance.new("Frame", parent)
+        f.Name = "Row" .. order
+        f.LayoutOrder = order
+        f.Size = UDim2.new(1, 0, 0, 0)
+        f.AutomaticSize = Enum.AutomaticSize.Y
+        f.BackgroundTransparency = 1
+        f.BorderSizePixel = 0
+        local l = Instance.new("UIListLayout", f)
+        l.FillDirection = Enum.FillDirection.Horizontal
+        l.Wraps = true
+        l.SortOrder = Enum.SortOrder.LayoutOrder
+        l.Padding = UDim.new(0, 6)
+        return f
+    end
+
+    local bar = card(root, "Bar")
+    bar.Size = UDim2.new(1, 0, 0, 0)
+    bar.AutomaticSize = Enum.AutomaticSize.Y
+    local bp = Instance.new("UIPadding", bar)
+    bp.PaddingTop = UDim.new(0, 8); bp.PaddingBottom = UDim.new(0, 8)
+    bp.PaddingLeft = UDim.new(0, 8); bp.PaddingRight = UDim.new(0, 8)
+    local bl = Instance.new("UIListLayout", bar)
+    bl.SortOrder = Enum.SortOrder.LayoutOrder
+    bl.Padding = UDim.new(0, 6)
+    local chipsRow, actsRow = wrapRow(bar, 1), wrapRow(bar, 2)
+
+    local srch = Instance.new("Frame", bar)
+    srch.Name = "Search"
+    srch.LayoutOrder = 3
+    srch.Size = UDim2.new(1, 0, 0, 28)
+    srch.BackgroundTransparency = 1
+    srch.Visible = false
+
+    local area = card(root, "LogArea")
+    local ap = Instance.new("UIPadding", area)
+    ap.PaddingTop = UDim.new(0, 6); ap.PaddingBottom = UDim.new(0, 6)
+    ap.PaddingLeft = UDim.new(0, 6); ap.PaddingRight = UDim.new(0, 6)
+
+    local function scroller(name)
+        local sc = Instance.new("ScrollingFrame", area)
+        sc.Name = name
+        sc.Size = UDim2.fromScale(1, 1)
+        sc.BackgroundTransparency = 1
+        sc.BorderSizePixel = 0
+        sc.ScrollBarThickness = 4
+        sc.ScrollBarImageColor3 = C.TextDim
+        sc.ScrollBarImageTransparency = 0.4
+        sc.CanvasSize = UDim2.new()
+        sc.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        sc.ScrollingDirection = Enum.ScrollingDirection.Y
+        return sc
+    end
+    local list = scroller("List")
+    local ll = Instance.new("UIListLayout", list)
+    ll.SortOrder = Enum.SortOrder.LayoutOrder
+    ll.Padding = UDim.new(0, 1)
+    local rawScroll = scroller("Raw")
+    rawScroll.Visible = false
+    local rawBox = Instance.new("TextBox")
+    rawBox.Size = UDim2.new(1, 0, 0, 0)
+    rawBox.AutomaticSize = Enum.AutomaticSize.Y
+    rawBox.BackgroundTransparency = 1
+    rawBox.ClearTextOnFocus = false
+    rawBox.MultiLine = true
+    rawBox.TextWrapped = true
+    rawBox.Font = Enum.Font.Code
+    rawBox.TextSize = 12
+    rawBox.TextColor3 = C.Text
+    rawBox.TextXAlignment = Enum.TextXAlignment.Left
+    rawBox.TextYAlignment = Enum.TextYAlignment.Top
+    rawBox.Text = ""
+    pcall(function() rawBox.TextEditable = false end)
+    Lang.items[rawBox] = { applied = {} } -- log mentah: jangan diterjemahkan
+    rawBox.Parent = rawScroll
+
+    local status = Instance.new("TextLabel", root)
+    status.Name = "Status"
+    status.Size = UDim2.new(1, 0, 0, 16)
+    status.BackgroundTransparency = 1
+    status.Font = Font
+    status.TextSize = 11
+    status.TextColor3 = C.TextDim
+    status.TextXAlignment = Enum.TextXAlignment.Left
+    status.TextTruncate = Enum.TextTruncate.AtEnd
+    status.Text = ""
+
+    local function layout()
+        local h = bar.AbsoluteSize.Y + 6
+        area.Position = UDim2.fromOffset(0, h)
+        area.Size = UDim2.new(1, 0, 1, -(h + 20))
+        status.Position = UDim2.new(0, 0, 1, -16)
+    end
+    bar:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+    layout()
+
+    local function paintBtn(b, on)
+        b.BackgroundColor3 = on and C.Accent or C.Surface2
+        b.TextColor3 = on and C.Bg or C.Text
+    end
+
+    local function mkBtn(parent, text, order, fn, w)
+        local b = Instance.new("TextButton")
+        b.Name = "Btn"
+        b.LayoutOrder = order
+        b.Size = UDim2.fromOffset(w or 0, 26)
+        if not w then b.AutomaticSize = Enum.AutomaticSize.X end
+        b.AutoButtonColor = false
+        b.BackgroundColor3 = C.Surface2
+        b.BorderSizePixel = 0
+        b.Font = FontBold
+        b.TextSize = 12
+        b.TextColor3 = C.Text
+        b.Text = text
+        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+        if not w then
+            local p = Instance.new("UIPadding", b)
+            p.PaddingLeft = UDim.new(0, 10); p.PaddingRight = UDim.new(0, 10)
+        end
+        b.MouseButton1Click:Connect(fn)
+        b.Parent = parent
+        return b
+    end
+
+    -- ---------- scroll helpers ----------
+    local function curScroll() return S.raw and rawScroll or list end
+    local function atBottom()
+        local sc = curScroll()
+        return sc.CanvasPosition.Y >= sc.AbsoluteCanvasSize.Y - sc.AbsoluteSize.Y - 30
+    end
+    local function scrollEnd()
+        task.delay(0.05, function()
+            local sc = curScroll()
+            sc.CanvasPosition = Vector2.new(0, math.max(0, sc.AbsoluteCanvasSize.Y))
+        end)
+    end
+
+    -- ---------- render ----------
+    local refreshUI
+
+    local function paintRow(rw)
+        local e, r = rw.e, rw.r
+        if S.sel[e.id] then
+            r.BackgroundColor3 = C.Accent
+            r.BackgroundTransparency = 0.65
+        elseif e.k == "warn" or e.k == "error" then
+            r.BackgroundColor3 = COL[e.k]
+            r.BackgroundTransparency = 0.9
+        else
+            r.BackgroundTransparency = 1
+        end
+    end
+
+    local function toggleSel(rw)
+        local id = rw.e.id
+        if S.sel[id] then
+            S.sel[id] = nil; S.nsel = S.nsel - 1
+        else
+            S.sel[id] = true; S.nsel = S.nsel + 1
+        end
+        paintRow(rw)
+        refreshUI()
+    end
+
+    local function addRow(e)
+        local r = Instance.new("TextButton")
+        r.Name = "Line"
+        r.LayoutOrder = e.id
+        r.Size = UDim2.new(1, 0, 0, 0)
+        r.AutomaticSize = Enum.AutomaticSize.Y
+        r.AutoButtonColor = false
+        r.BorderSizePixel = 0
+        r.BackgroundTransparency = 1
+        r.Font = Enum.Font.Code
+        r.TextSize = 12
+        r.TextWrapped = true
+        r.RichText = true
+        r.TextXAlignment = Enum.TextXAlignment.Left
+        r.TextYAlignment = Enum.TextYAlignment.Top
+        r.TextColor3 = colOf(e.k)
+        r.Text = lineText(e)
+        local p = Instance.new("UIPadding", r)
+        p.PaddingLeft = UDim.new(0, 4); p.PaddingRight = UDim.new(0, 4)
+        p.PaddingTop = UDim.new(0, 1); p.PaddingBottom = UDim.new(0, 1)
+        Lang.items[r] = { applied = {} } -- log mentah: jangan diterjemahkan
+        local rw = { e = e, r = r }
+        r.MouseButton1Click:Connect(function()
+            if S.selMode then toggleSel(rw) end
+        end)
+        paintRow(rw)
+        r.Parent = list
+        S.rows[#S.rows + 1] = rw
+    end
+
+    local function refreshRaw()
+        if not S.raw or rawBox:IsFocused() then return end
+        local out, b, n = {}, S.buf, 0
+        for i = #b, 1, -1 do
+            if passes(b[i]) then
+                n = n + 1
+                out[n] = plain(b[i])
+                if n >= RAWLINES then break end
+            end
+        end
+        local rev = {}
+        for i = n, 1, -1 do rev[#rev + 1] = out[i] end
+        rawBox.Text = table.concat(rev, "\n")
+    end
+
+    local function rebuild()
+        S.stale, S.bad, S.trimmed = false, false, false
+        for _, rw in ipairs(S.rows) do rw.r:Destroy() end
+        S.rows = {}
+        local pick, b, total = {}, S.buf, 0
+        for i = #b, 1, -1 do
+            if passes(b[i]) then
+                total = total + 1
+                if #pick < MAXROWS then pick[#pick + 1] = b[i] end
+            end
+        end
+        S.match = total
+        for i = #pick, 1, -1 do addRow(pick[i]) end
+        S.last = S.nid
+        refreshRaw()
+        refreshUI()
+        scrollEnd()
+    end
+
+    local function flush()
+        if S.last == S.nid then return end
+        if S.nid - S.last > MAXROWS then return rebuild() end
+        local b, near = S.buf, atBottom()
+        local i = #b
+        while i > 0 and b[i].id > S.last do i = i - 1 end
+        for j = i + 1, #b do
+            local e = b[j]
+            if passes(e) then
+                S.match = S.match + 1
+                addRow(e)
+                if #S.rows > MAXROWS then table.remove(S.rows, 1).r:Destroy() end
+            end
+        end
+        S.last = S.nid
+        if S.trimmed then
+            S.trimmed = false
+            local t = 0
+            for _, e in ipairs(b) do if passes(e) then t = t + 1 end end
+            S.match = t
+        end
+        refreshRaw()
+        refreshUI()
+        if near then scrollEnd() end
+    end
+
+    -- ---------- actions ----------
+    local function collect(onlySel)
+        local out = {}
+        for _, e in ipairs(S.buf) do
+            if onlySel then
+                if S.sel[e.id] then out[#out + 1] = plain(e) end
+            elseif passes(e) then
+                out[#out + 1] = plain(e)
+            end
+        end
+        return out
+    end
+
+    local function doCopy()
+        local lines = collect(S.nsel > 0)
+        if #lines == 0 then API:Warn("Console", "Tidak ada log untuk disalin", 2) return end
+        if copyText(table.concat(lines, "\n")) then
+            API:Success("Tersalin", #lines .. " baris log", 2)
+        else
+            API:Error("Gagal menyalin", "Executor tidak support clipboard", 3)
+        end
+    end
+
+    local function doDownload()
+        if typeof(writefile) ~= "function" then
+            API:Error("Download gagal", "Executor tidak support writefile", 3)
+            return
+        end
+        ensureDir(CFG.ConfigDir)
+        ensureDir(CFG.CacheDir)
+        ensureDir(DIR)
+        local lines = {
+            "BZ Menu Console",
+            "PlaceId: " .. tostring(game.PlaceId) .. " | GameId: " .. tostring(game.GameId),
+            "JobId: " .. tostring(game.JobId),
+            "Tanggal: " .. tostring(os.date("%Y-%m-%d %H:%M:%S")),
+            "Total: " .. #S.buf .. " baris",
+            string.rep("-", 40),
+        }
+        for _, e in ipairs(S.buf) do lines[#lines + 1] = plain(e) end
+        local path = string.format("%s/Console_%s_%s.txt", DIR, tostring(game.PlaceId), tostring(os.date("%Y%m%d_%H%M%S")))
+        local ok, err = pcall(writefile, path, table.concat(lines, "\n"))
+        if ok then
+            S.saved = path
+            API:Success("Console tersimpan", path, 3)
+            refreshUI()
+        else
+            API:Error("Download gagal", tostring(err), 4)
+        end
+    end
+
+    local function doClear()
+        S.buf = {}
+        S.cnt = { print = 0, info = 0, warn = 0, error = 0 }
+        S.sel, S.nsel = {}, 0
+        rebuild()
+    end
+
+    local function allOn()
+        for _, t in ipairs(TYPES) do if not S.on[t] then return false end end
+        return true
+    end
+
+    local function chipClick(k)
+        if allOn() then
+            for _, t in ipairs(TYPES) do S.on[t] = (t == k) end -- solo
+        else
+            S.on[k] = not S.on[k]
+            local any = false
+            for _, t in ipairs(TYPES) do if S.on[t] then any = true end end
+            if not any then for _, t in ipairs(TYPES) do S.on[t] = true end end
+        end
+        rebuild()
+    end
+
+    -- ---------- toolbar ----------
+    local chips = {}
+    chips.all = mkBtn(chipsRow, "Semua", 0, function()
+        for _, t in ipairs(TYPES) do S.on[t] = true end
+        rebuild()
+    end)
+    for i, k in ipairs(TYPES) do
+        chips[k] = mkBtn(chipsRow, NAMES[k], i, function() chipClick(k) end)
+    end
+
+    local box = Instance.new("TextBox", srch)
+    box.Name = "SearchBox"
+    box.Size = UDim2.new(1, -64, 1, 0)
+    box.BackgroundColor3 = C.Surface2
+    box.BorderSizePixel = 0
+    box.ClearTextOnFocus = false
+    box.ClipsDescendants = true
+    box.Font = Font
+    box.TextSize = 12
+    box.TextColor3 = C.Text
+    box.PlaceholderText = "Cari log..."
+    box.PlaceholderColor3 = C.TextDim
+    box.TextXAlignment = Enum.TextXAlignment.Left
+    box.Text = ""
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
+    local bxp = Instance.new("UIPadding", box)
+    bxp.PaddingLeft = UDim.new(0, 8); bxp.PaddingRight = UDim.new(0, 8)
+    box:GetPropertyChangedSignal("Text"):Connect(function()
+        S.q = box.Text
+        S.ql = string.lower(S.q)
+        S.tk = S.tk + 1
+        local my = S.tk
+        task.delay(0.25, function()
+            if my == S.tk then rebuild() end
+        end)
+    end)
+    local bCase = mkBtn(srch, "Aa", 1, function()
+        S.case = not S.case
+        rebuild()
+    end, 28)
+    bCase.Position = UDim2.new(1, -60, 0, 0)
+    local bPat = mkBtn(srch, ".*", 2, function()
+        S.pat = not S.pat
+        rebuild()
+    end, 28)
+    bPat.Position = UDim2.new(1, -28, 0, 0)
+
+    local bSearch, bSel, bAll, bNone, bCopy, bRaw, bTime
+    bSearch = mkBtn(actsRow, "Cari", 1, function()
+        S.search = not S.search
+        srch.Visible = S.search
+        if S.search then
+            box:CaptureFocus()
+        else
+            box.Text = "" -- memicu rebuild lewat event Text
+        end
+        refreshUI()
+    end)
+    bSel = mkBtn(actsRow, "Pilih", 2, function()
+        S.selMode = not S.selMode
+        if not S.selMode then
+            S.sel, S.nsel = {}, 0
+            for _, rw in ipairs(S.rows) do paintRow(rw) end
+        end
+        refreshUI()
+    end)
+    bAll = mkBtn(actsRow, "Pilih semua", 3, function()
+        for _, e in ipairs(S.buf) do
+            if passes(e) and not S.sel[e.id] then S.sel[e.id] = true; S.nsel = S.nsel + 1 end
+        end
+        for _, rw in ipairs(S.rows) do paintRow(rw) end
+        refreshUI()
+    end)
+    bNone = mkBtn(actsRow, "Batal", 4, function()
+        S.sel, S.nsel = {}, 0
+        for _, rw in ipairs(S.rows) do paintRow(rw) end
+        refreshUI()
+    end)
+    bCopy = mkBtn(actsRow, "Salin", 5, doCopy)
+    mkBtn(actsRow, "Hapus", 6, doClear)
+    mkBtn(actsRow, "Download", 7, doDownload)
+    bRaw = mkBtn(actsRow, "Teks", 8, function()
+        S.raw = not S.raw
+        list.Visible = not S.raw
+        rawScroll.Visible = S.raw
+        if S.raw then refreshRaw() end
+        refreshUI()
+        scrollEnd()
+    end)
+    bTime = mkBtn(actsRow, "Waktu", 9, function()
+        S.time = not S.time
+        rebuild()
+    end)
+    mkBtn(actsRow, "Bawah", 10, scrollEnd)
+
+    function refreshUI()
+        local all = allOn()
+        for _, k in ipairs(TYPES) do
+            local on = S.on[k] and not all
+            chips[k].Text = NAMES[k] .. " " .. S.cnt[k]
+            paintBtn(chips[k], on)
+            chips[k].TextColor3 = on and C.Bg or colOf(k)
+        end
+        paintBtn(chips.all, all)
+        paintBtn(bSearch, S.search)
+        paintBtn(bSel, S.selMode)
+        paintBtn(bRaw, S.raw)
+        paintBtn(bTime, S.time)
+        paintBtn(bCase, S.case and not S.pat)
+        paintBtn(bPat, S.pat)
+        bAll.Visible = S.selMode
+        bNone.Visible = S.selMode
+        bCopy.Text = S.nsel > 0 and ("Salin (" .. S.nsel .. ")") or "Salin"
+        local t = "Tampil " .. S.match .. " / " .. #S.buf .. " baris"
+        if S.nsel > 0 then t = t .. "  |  " .. S.nsel .. " dipilih" end
+        if S.bad then t = t .. "  |  Pola tidak valid" end
+        if S.saved then t = t .. "  |  Tersimpan: " .. S.saved end
+        status.Text = t
+    end
+
+    -- ---------- hook LogService ----------
+    local okH, hist = pcall(function() return LogService:GetLogHistory() end)
+    if okH and type(hist) == "table" then
+        for i = math.max(1, #hist - MAXLOG + 1), #hist do
+            local h = hist[i]
+            if type(h) == "table" then push(h.message, kindOf(h.messageType), h.timestamp) end
+        end
+    end
+    local conn = LogService.MessageOut:Connect(function(msg, mt)
+        push(msg, kindOf(mt))
+    end)
+    table.insert(API._conns, conn)
+    API:OnUnload(function() pcall(function() conn:Disconnect() end) end)
+
+    task.spawn(function()
+        while screenGui.Parent do
+            task.wait(0.2)
+            if isOpen and cat.body.Visible then
+                if S.stale then rebuild() else flush() end
+            end
+        end
+    end)
+
+    refreshUI()
+
+    API.Console = {
+        Clear = doClear,
+        Download = doDownload,
+        Copy = doCopy,
+        GetLogs = function()
+            local out = {}
+            for _, e in ipairs(S.buf) do out[#out + 1] = { Time = e.t, Type = e.k, Message = e.m } end
+            return out
+        end,
+    }
+end, function(err)
+    warn("[BZ] Console gagal dibuat: " .. tostring(err))
+end)
+
+
 Lang:Track(screenGui)
 Lang:Refresh()
 
@@ -5624,5 +6246,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.6 module ready")
+print("[BZ] Menu UI v4.7 module ready")
 return API
