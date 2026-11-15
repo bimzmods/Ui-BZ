@@ -56,7 +56,55 @@
         "Dimuat": "Loaded",
         "Dihapus": "Deleted",
         "Tersimpan": "Saved",
-        "tidak tersedia": "not available"
+        "tidak tersedia": "not available",
+        "Console": "Console",
+        "Semua": "All",
+        "Cari": "Search",
+        "Cari log...": "Search logs...",
+        "Pilih": "Select",
+        "Pilih semua": "Select all",
+        "Batal": "Cancel",
+        "Salin": "Copy",
+        "Hapus": "Clear",
+        "Download": "Download",
+        "Teks": "Text",
+        "Waktu": "Time",
+        "Tampil": "Showing",
+        "baris": "lines",
+        "dipilih": "selected",
+        "Pola tidak valid": "Invalid pattern",
+        "Tidak ada log untuk disalin": "No logs to copy",
+        "Download gagal": "Download failed",
+        "Console tersimpan": "Console saved",
+        "Gaya Toggle": "Toggle Style",
+        "Font": "Font",
+        "Link Font": "Font Link",
+        "link GitHub .ttf / .otf": "GitHub link .ttf / .otf",
+        "Download & Pakai Font": "Download & Use Font",
+        "Muat Ulang Daftar Font": "Reload Font List",
+        "Builder Sans Tebal": "Builder Sans Bold",
+        "Isi link font dulu": "Enter a font link first",
+        "✘ Isi link font dulu": "✘ Enter a font link first",
+        "Link harus file .ttf / .otf (raw GitHub)": "Link must be a .ttf / .otf file (raw GitHub)",
+        "✘ Link harus file .ttf / .otf (raw GitHub)": "✘ Link must be a .ttf / .otf file (raw GitHub)",
+        "Gagal download, cek link": "Download failed, check the link",
+        "✘ Gagal download, cek link": "✘ Download failed, check the link",
+        "Bukan file font valid, pakai link raw ke .ttf/.otf": "Not a valid font file, use a raw link to .ttf/.otf",
+        "✘ Bukan file font valid, pakai link raw ke .ttf/.otf": "✘ Not a valid font file, use a raw link to .ttf/.otf",
+        "Executor tidak support writefile": "Executor does not support writefile",
+        "✘ Executor tidak support writefile": "✘ Executor does not support writefile",
+        "Executor tidak support writefile/getcustomasset": "Executor does not support writefile/getcustomasset",
+        "✘ Executor tidak support writefile/getcustomasset": "✘ Executor does not support writefile/getcustomasset",
+        "Executor tidak support FontFace": "Executor does not support FontFace",
+        "✘ Executor tidak support FontFace": "✘ Executor does not support FontFace",
+        "Gagal membaca file font": "Failed to read font file",
+        "✘ Gagal membaca file font": "✘ Failed to read font file",
+        "Gagal membuat family font": "Failed to create font family",
+        "✘ Gagal membuat family font": "✘ Failed to create font family",
+        "Gagal menulis family font": "Failed to write font family",
+        "✘ Gagal menulis family font": "✘ Failed to write font family",
+        "Gagal memuat family font": "Failed to load font family",
+        "✘ Gagal memuat family font": "✘ Failed to load font family"
       },
       "patterns": [
         {
@@ -102,6 +150,38 @@
         {
           "match": "^Save config: tidak ada$",
           "text": "Save config: none"
+        },
+        {
+          "match": "^Salin %((%d+)%)$",
+          "text": "Copy (%1)"
+        },
+        {
+          "match": "^(%d+) baris log$",
+          "text": "%1 log lines"
+        },
+        {
+          "match": "^✔ Font custom aktif: (.+)$",
+          "text": "✔ Custom font active: %1"
+        },
+        {
+          "match": "^✔ Mengunduh (.+) %.%.%.$",
+          "text": "✔ Downloading %1 ..."
+        },
+        {
+          "match": "^✔ Sudah ada, tanpa download: (.+)$",
+          "text": "✔ Already exists, no download: %1"
+        },
+        {
+          "match": "^✔ Terunduh: (.+)$",
+          "text": "✔ Downloaded: %1"
+        },
+        {
+          "match": "^✔ (%d+) font custom ditemukan$",
+          "text": "✔ %1 custom fonts found"
+        },
+        {
+          "match": "^Font custom: taruh %.ttf/%.otf di (.-) atau pakai link GitHub di bawah%. Pasangan tebal: NamaFont%-Bold%.ttf %(opsional%)%.$",
+          "text": "Custom font: put .ttf/.otf files in %1 or use the GitHub link below. Bold pair: FontName-Bold.ttf (optional)."
         }
       ]
     },
@@ -160,7 +240,55 @@
         "Dimuat": "Cargado",
         "Dihapus": "Eliminado",
         "Tersimpan": "Guardado",
-        "tidak tersedia": "no disponible"
+        "tidak tersedia": "no disponible",
+        "Console": "Consola",
+        "Semua": "Todos",
+        "Cari": "Buscar",
+        "Cari log...": "Buscar logs...",
+        "Pilih": "Seleccionar",
+        "Pilih semua": "Seleccionar todo",
+        "Batal": "Cancelar",
+        "Salin": "Copiar",
+        "Hapus": "Borrar",
+        "Download": "Descargar",
+        "Teks": "Texto",
+        "Waktu": "Hora",
+        "Tampil": "Mostrando",
+        "baris": "líneas",
+        "dipilih": "seleccionadas",
+        "Pola tidak valid": "Patrón no válido",
+        "Tidak ada log untuk disalin": "No hay logs para copiar",
+        "Download gagal": "Error al descargar",
+        "Console tersimpan": "Consola guardada",
+        "Gaya Toggle": "Estilo de toggle",
+        "Font": "Fuente",
+        "Link Font": "Enlace de fuente",
+        "link GitHub .ttf / .otf": "enlace de GitHub .ttf / .otf",
+        "Download & Pakai Font": "Descargar y usar fuente",
+        "Muat Ulang Daftar Font": "Recargar lista de fuentes",
+        "Builder Sans Tebal": "Builder Sans Negrita",
+        "Isi link font dulu": "Introduce primero un enlace de fuente",
+        "✘ Isi link font dulu": "✘ Introduce primero un enlace de fuente",
+        "Link harus file .ttf / .otf (raw GitHub)": "El enlace debe ser un archivo .ttf / .otf (raw de GitHub)",
+        "✘ Link harus file .ttf / .otf (raw GitHub)": "✘ El enlace debe ser un archivo .ttf / .otf (raw de GitHub)",
+        "Gagal download, cek link": "Error al descargar, revisa el enlace",
+        "✘ Gagal download, cek link": "✘ Error al descargar, revisa el enlace",
+        "Bukan file font valid, pakai link raw ke .ttf/.otf": "No es un archivo de fuente válido, usa un enlace raw a .ttf/.otf",
+        "✘ Bukan file font valid, pakai link raw ke .ttf/.otf": "✘ No es un archivo de fuente válido, usa un enlace raw a .ttf/.otf",
+        "Executor tidak support writefile": "El executor no admite writefile",
+        "✘ Executor tidak support writefile": "✘ El executor no admite writefile",
+        "Executor tidak support writefile/getcustomasset": "El executor no admite writefile/getcustomasset",
+        "✘ Executor tidak support writefile/getcustomasset": "✘ El executor no admite writefile/getcustomasset",
+        "Executor tidak support FontFace": "El executor no admite FontFace",
+        "✘ Executor tidak support FontFace": "✘ El executor no admite FontFace",
+        "Gagal membaca file font": "Error al leer el archivo de fuente",
+        "✘ Gagal membaca file font": "✘ Error al leer el archivo de fuente",
+        "Gagal membuat family font": "Error al crear la familia de fuentes",
+        "✘ Gagal membuat family font": "✘ Error al crear la familia de fuentes",
+        "Gagal menulis family font": "Error al escribir la familia de fuentes",
+        "✘ Gagal menulis family font": "✘ Error al escribir la familia de fuentes",
+        "Gagal memuat family font": "Error al cargar la familia de fuentes",
+        "✘ Gagal memuat family font": "✘ Error al cargar la familia de fuentes"
       },
       "patterns": [
         {
@@ -206,6 +334,38 @@
         {
           "match": "^Save config: tidak ada$",
           "text": "Config guardada: ninguna"
+        },
+        {
+          "match": "^Salin %((%d+)%)$",
+          "text": "Copiar (%1)"
+        },
+        {
+          "match": "^(%d+) baris log$",
+          "text": "%1 líneas de log"
+        },
+        {
+          "match": "^✔ Font custom aktif: (.+)$",
+          "text": "✔ Fuente personalizada activa: %1"
+        },
+        {
+          "match": "^✔ Mengunduh (.+) %.%.%.$",
+          "text": "✔ Descargando %1 ..."
+        },
+        {
+          "match": "^✔ Sudah ada, tanpa download: (.+)$",
+          "text": "✔ Ya existe, sin descargar: %1"
+        },
+        {
+          "match": "^✔ Terunduh: (.+)$",
+          "text": "✔ Descargado: %1"
+        },
+        {
+          "match": "^✔ (%d+) font custom ditemukan$",
+          "text": "✔ %1 fuentes personalizadas encontradas"
+        },
+        {
+          "match": "^Font custom: taruh %.ttf/%.otf di (.-) atau pakai link GitHub di bawah%. Pasangan tebal: NamaFont%-Bold%.ttf %(opsional%)%.$",
+          "text": "Fuente personalizada: coloca archivos .ttf/.otf en %1 o usa el enlace de GitHub de abajo. Par en negrita: NombreFuente-Bold.ttf (opcional)."
         }
       ]
     },
@@ -264,7 +424,55 @@
         "Dimuat": "Carregado",
         "Dihapus": "Excluído",
         "Tersimpan": "Salvo",
-        "tidak tersedia": "não disponível"
+        "tidak tersedia": "não disponível",
+        "Console": "Console",
+        "Semua": "Todos",
+        "Cari": "Buscar",
+        "Cari log...": "Buscar logs...",
+        "Pilih": "Selecionar",
+        "Pilih semua": "Selecionar tudo",
+        "Batal": "Cancelar",
+        "Salin": "Copiar",
+        "Hapus": "Limpar",
+        "Download": "Baixar",
+        "Teks": "Texto",
+        "Waktu": "Hora",
+        "Tampil": "Mostrando",
+        "baris": "linhas",
+        "dipilih": "selecionadas",
+        "Pola tidak valid": "Padrão inválido",
+        "Tidak ada log untuk disalin": "Não há logs para copiar",
+        "Download gagal": "Falha no download",
+        "Console tersimpan": "Console salvo",
+        "Gaya Toggle": "Estilo do toggle",
+        "Font": "Fonte",
+        "Link Font": "Link da fonte",
+        "link GitHub .ttf / .otf": "link do GitHub .ttf / .otf",
+        "Download & Pakai Font": "Baixar e usar fonte",
+        "Muat Ulang Daftar Font": "Recarregar lista de fontes",
+        "Builder Sans Tebal": "Builder Sans Negrito",
+        "Isi link font dulu": "Insira primeiro um link de fonte",
+        "✘ Isi link font dulu": "✘ Insira primeiro um link de fonte",
+        "Link harus file .ttf / .otf (raw GitHub)": "O link deve ser um arquivo .ttf / .otf (raw do GitHub)",
+        "✘ Link harus file .ttf / .otf (raw GitHub)": "✘ O link deve ser um arquivo .ttf / .otf (raw do GitHub)",
+        "Gagal download, cek link": "Falha no download, verifique o link",
+        "✘ Gagal download, cek link": "✘ Falha no download, verifique o link",
+        "Bukan file font valid, pakai link raw ke .ttf/.otf": "Não é um arquivo de fonte válido, use um link raw para .ttf/.otf",
+        "✘ Bukan file font valid, pakai link raw ke .ttf/.otf": "✘ Não é um arquivo de fonte válido, use um link raw para .ttf/.otf",
+        "Executor tidak support writefile": "O executor não suporta writefile",
+        "✘ Executor tidak support writefile": "✘ O executor não suporta writefile",
+        "Executor tidak support writefile/getcustomasset": "O executor não suporta writefile/getcustomasset",
+        "✘ Executor tidak support writefile/getcustomasset": "✘ O executor não suporta writefile/getcustomasset",
+        "Executor tidak support FontFace": "O executor não suporta FontFace",
+        "✘ Executor tidak support FontFace": "✘ O executor não suporta FontFace",
+        "Gagal membaca file font": "Falha ao ler o arquivo da fonte",
+        "✘ Gagal membaca file font": "✘ Falha ao ler o arquivo da fonte",
+        "Gagal membuat family font": "Falha ao criar a família da fonte",
+        "✘ Gagal membuat family font": "✘ Falha ao criar a família da fonte",
+        "Gagal menulis family font": "Falha ao gravar a família da fonte",
+        "✘ Gagal menulis family font": "✘ Falha ao gravar a família da fonte",
+        "Gagal memuat family font": "Falha ao carregar a família da fonte",
+        "✘ Gagal memuat family font": "✘ Falha ao carregar a família da fonte"
       },
       "patterns": [
         {
@@ -310,6 +518,38 @@
         {
           "match": "^Save config: tidak ada$",
           "text": "Config salva: nenhuma"
+        },
+        {
+          "match": "^Salin %((%d+)%)$",
+          "text": "Copiar (%1)"
+        },
+        {
+          "match": "^(%d+) baris log$",
+          "text": "%1 linhas de log"
+        },
+        {
+          "match": "^✔ Font custom aktif: (.+)$",
+          "text": "✔ Fonte personalizada ativa: %1"
+        },
+        {
+          "match": "^✔ Mengunduh (.+) %.%.%.$",
+          "text": "✔ Baixando %1 ..."
+        },
+        {
+          "match": "^✔ Sudah ada, tanpa download: (.+)$",
+          "text": "✔ Já existe, sem download: %1"
+        },
+        {
+          "match": "^✔ Terunduh: (.+)$",
+          "text": "✔ Baixado: %1"
+        },
+        {
+          "match": "^✔ (%d+) font custom ditemukan$",
+          "text": "✔ %1 fontes personalizadas encontradas"
+        },
+        {
+          "match": "^Font custom: taruh %.ttf/%.otf di (.-) atau pakai link GitHub di bawah%. Pasangan tebal: NamaFont%-Bold%.ttf %(opsional%)%.$",
+          "text": "Fonte personalizada: coloque arquivos .ttf/.otf em %1 ou use o link do GitHub abaixo. Par em negrito: NomeFonte-Bold.ttf (opcional)."
         }
       ]
     },
@@ -368,7 +608,55 @@
         "Dimuat": "Chargé",
         "Dihapus": "Supprimé",
         "Tersimpan": "Enregistré",
-        "tidak tersedia": "indisponible"
+        "tidak tersedia": "indisponible",
+        "Console": "Console",
+        "Semua": "Tout",
+        "Cari": "Chercher",
+        "Cari log...": "Rechercher dans les logs...",
+        "Pilih": "Sélectionner",
+        "Pilih semua": "Tout sélectionner",
+        "Batal": "Annuler",
+        "Salin": "Copier",
+        "Hapus": "Effacer",
+        "Download": "Télécharger",
+        "Teks": "Texte",
+        "Waktu": "Heure",
+        "Tampil": "Affichage",
+        "baris": "lignes",
+        "dipilih": "sélectionnées",
+        "Pola tidak valid": "Motif invalide",
+        "Tidak ada log untuk disalin": "Aucun log à copier",
+        "Download gagal": "Échec du téléchargement",
+        "Console tersimpan": "Console enregistrée",
+        "Gaya Toggle": "Style du toggle",
+        "Font": "Police",
+        "Link Font": "Lien de la police",
+        "link GitHub .ttf / .otf": "lien GitHub .ttf / .otf",
+        "Download & Pakai Font": "Télécharger et utiliser la police",
+        "Muat Ulang Daftar Font": "Recharger la liste des polices",
+        "Builder Sans Tebal": "Builder Sans Gras",
+        "Isi link font dulu": "Saisis d'abord un lien de police",
+        "✘ Isi link font dulu": "✘ Saisis d'abord un lien de police",
+        "Link harus file .ttf / .otf (raw GitHub)": "Le lien doit pointer vers un fichier .ttf / .otf (raw GitHub)",
+        "✘ Link harus file .ttf / .otf (raw GitHub)": "✘ Le lien doit pointer vers un fichier .ttf / .otf (raw GitHub)",
+        "Gagal download, cek link": "Échec du téléchargement, vérifie le lien",
+        "✘ Gagal download, cek link": "✘ Échec du téléchargement, vérifie le lien",
+        "Bukan file font valid, pakai link raw ke .ttf/.otf": "Fichier de police invalide, utilise un lien raw vers .ttf/.otf",
+        "✘ Bukan file font valid, pakai link raw ke .ttf/.otf": "✘ Fichier de police invalide, utilise un lien raw vers .ttf/.otf",
+        "Executor tidak support writefile": "L'executor ne prend pas en charge writefile",
+        "✘ Executor tidak support writefile": "✘ L'executor ne prend pas en charge writefile",
+        "Executor tidak support writefile/getcustomasset": "L'executor ne prend pas en charge writefile/getcustomasset",
+        "✘ Executor tidak support writefile/getcustomasset": "✘ L'executor ne prend pas en charge writefile/getcustomasset",
+        "Executor tidak support FontFace": "L'executor ne prend pas en charge FontFace",
+        "✘ Executor tidak support FontFace": "✘ L'executor ne prend pas en charge FontFace",
+        "Gagal membaca file font": "Échec de la lecture du fichier de police",
+        "✘ Gagal membaca file font": "✘ Échec de la lecture du fichier de police",
+        "Gagal membuat family font": "Échec de la création de la famille de police",
+        "✘ Gagal membuat family font": "✘ Échec de la création de la famille de police",
+        "Gagal menulis family font": "Échec de l'écriture de la famille de police",
+        "✘ Gagal menulis family font": "✘ Échec de l'écriture de la famille de police",
+        "Gagal memuat family font": "Échec du chargement de la famille de police",
+        "✘ Gagal memuat family font": "✘ Échec du chargement de la famille de police"
       },
       "patterns": [
         {
@@ -414,6 +702,38 @@
         {
           "match": "^Save config: tidak ada$",
           "text": "Config enregistrée : aucune"
+        },
+        {
+          "match": "^Salin %((%d+)%)$",
+          "text": "Copier (%1)"
+        },
+        {
+          "match": "^(%d+) baris log$",
+          "text": "%1 lignes de log"
+        },
+        {
+          "match": "^✔ Font custom aktif: (.+)$",
+          "text": "✔ Police personnalisée active : %1"
+        },
+        {
+          "match": "^✔ Mengunduh (.+) %.%.%.$",
+          "text": "✔ Téléchargement de %1 ..."
+        },
+        {
+          "match": "^✔ Sudah ada, tanpa download: (.+)$",
+          "text": "✔ Existe déjà, sans téléchargement : %1"
+        },
+        {
+          "match": "^✔ Terunduh: (.+)$",
+          "text": "✔ Téléchargé : %1"
+        },
+        {
+          "match": "^✔ (%d+) font custom ditemukan$",
+          "text": "✔ %1 polices personnalisées trouvées"
+        },
+        {
+          "match": "^Font custom: taruh %.ttf/%.otf di (.-) atau pakai link GitHub di bawah%. Pasangan tebal: NamaFont%-Bold%.ttf %(opsional%)%.$",
+          "text": "Police personnalisée : place des fichiers .ttf/.otf dans %1 ou utilise le lien GitHub ci-dessous. Version gras : NomPolice-Bold.ttf (facultatif)."
         }
       ]
     }
