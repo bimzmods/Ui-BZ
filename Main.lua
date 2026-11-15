@@ -282,7 +282,7 @@ versionLabel = Instance.new("TextLabel", versionPill)
 versionLabel.Size = UDim2.new(0, 0, 1, 0)
 versionLabel.AutomaticSize = Enum.AutomaticSize.X
 versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "v4.8"
+versionLabel.Text = "v4.9"
 versionLabel.Font = FontBold
 versionLabel.TextSize = 10
 versionLabel.TextColor3 = C.Bg
@@ -4824,7 +4824,7 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v4.8"
+local BZ_VERSION = "v4.9"
 local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown" }
 local logoSizeValue = 44
 local deskripsiText, versionShow = TEXT_DEFAULTS.Deskripsi, true
@@ -5343,6 +5343,7 @@ local function buildUICategory()
     end)
 
     API:AddSection("Font")
+    local FONT_DIR = CFG.CacheDir .. "/Font"
     local FONT_SETS = {
         ["Builder Sans"] = { "BuilderSans", "BuilderSansBold" },
         ["Builder Sans Tebal"] = { "BuilderSansMedium", "BuilderSansExtraBold" },
@@ -5361,23 +5362,200 @@ local function buildUICategory()
             table.insert(fontNames, n)
         end
     end
-    API:AddSelectMenu("ui_font", "Font", fontNames, "Builder Sans", function(v)
-        local set = FONT_SETS[v]
-        if not set or typeof(set[1]) ~= "EnumItem" then return end
-        local oldR, oldB, newR, newB = Font, FontBold, set[1], set[2]
-        if oldR == newR and oldB == newB then return end
-        Font, FontBold, CFG.Font, CFG.FontBold = newR, newB, newR, newB
-        local function remap(rootGui)
-            for _, d in ipairs(rootGui:GetDescendants()) do
-                if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
-                    local f = d.Font
-                    if f == oldR then d.Font = newR elseif f == oldB then d.Font = newB end
-                end
+    local nBuiltin = #fontNames
+
+    local FontDT
+    pcall(function()
+        local env = getfenv(1)
+        FontDT = env and env.Font
+    end)
+    local custom, activeFam, fontSel, fontNote, urlBox = {}, nil, nil, nil, nil
+
+    local function fnote(ok, text)
+        if fontNote then fontNote:SetText((ok and "✔ " or "✘ ") .. text) end
+    end
+    local function isText(d)
+        return d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox")
+    end
+    local function isBold(d)
+        local ok, w = pcall(function() return d.FontFace.Weight.Value end)
+        return ok and w >= 600
+    end
+    local function eachText(fn)
+        for _, g in ipairs({ screenGui, pickerGui }) do
+            for _, d in ipairs(g:GetDescendants()) do
+                if isText(d) and d.Font ~= Enum.Font.Code then fn(d) end
             end
         end
-        remap(screenGui)
-        if pickerGui then remap(pickerGui) end
+    end
+    local function applyFam(d, fam)
+        d.FontFace = FontDT.new(fam, isBold(d) and Enum.FontWeight.Bold or Enum.FontWeight.Regular)
+    end
+
+    local function parseName(file)
+        local stem, ext = tostring(file):match("^(.+)%.(%w+)$")
+        if not stem then return nil end
+        ext = ext:lower()
+        if ext ~= "ttf" and ext ~= "otf" then return nil end
+        local cut, n = stem:gsub("[-_ ]+[Bb][Oo][Ll][Dd]$", "")
+        if n > 0 then return cut, "bold" end
+        cut, n = stem:gsub("[-_ ]+[Rr][Ee][Gg][Uu][Ll][Aa][Rr]$", "")
+        if n > 0 then return cut, "reg" end
+        return stem, "reg"
+    end
+    local function labelOf(base) return base .. " (Custom)" end
+
+    local function scanCustom()
+        custom = {}
+        if typeof(listfiles) ~= "function" then return end
+        local ok, files = pcall(listfiles, FONT_DIR)
+        if not ok or type(files) ~= "table" then return end
+        for _, p in ipairs(files) do
+            local file = tostring(p):match("([^/\\]+)$")
+            local base, kind = parseName(file)
+            if base then
+                local lb = labelOf(base)
+                local c = custom[lb] or { base = base }
+                custom[lb] = c
+                c[kind] = FONT_DIR .. "/" .. file
+            end
+        end
+        for _, c in pairs(custom) do c.reg = c.reg or c.bold end
+    end
+
+    local function optionList()
+        local list = {}
+        for i = 1, nBuiltin do list[i] = fontNames[i] end
+        local extra = {}
+        for lb in pairs(custom) do extra[#extra + 1] = lb end
+        table.sort(extra, function(a, b) return a:lower() < b:lower() end)
+        for _, lb in ipairs(extra) do list[#list + 1] = lb end
+        return list
+    end
+
+    local function buildFamily(c)
+        if typeof(writefile) ~= "function" or typeof(getcustomasset) ~= "function" then
+            return nil, "Executor tidak support writefile/getcustomasset"
+        end
+        local okR, regAsset = pcall(getcustomasset, c.reg)
+        if not okR or not regAsset then return nil, "Gagal membaca file font" end
+        local okB, boldAsset = pcall(getcustomasset, c.bold or c.reg)
+        if not okB or not boldAsset then boldAsset = regAsset end
+        local okJ, json = pcall(function()
+            return HttpService:JSONEncode({
+                name = c.base,
+                faces = {
+                    { name = "Regular", weight = 400, style = "normal", assetId = regAsset },
+                    { name = "Bold", weight = 700, style = "normal", assetId = boldAsset },
+                },
+            })
+        end)
+        if not okJ then return nil, "Gagal membuat family font" end
+        local jp = FONT_DIR .. "/" .. c.base .. ".json"
+        if not pcall(writefile, jp, json) then return nil, "Gagal menulis family font" end
+        local okA, fam = pcall(getcustomasset, jp)
+        if not okA or not fam then return nil, "Gagal memuat family font" end
+        return fam
+    end
+
+    ensureDir(CFG.ConfigDir)
+    ensureDir(CFG.CacheDir)
+    ensureDir(FONT_DIR)
+    scanCustom()
+
+    fontSel = API:AddSelectMenu("ui_font", "Font", optionList(), "Builder Sans", function(v)
+        local c = custom[v]
+        if c then
+            local fam, err
+            if not (FontDT and FontDT.new) then
+                err = "Executor tidak support FontFace"
+            else
+                fam, err = buildFamily(c)
+            end
+            if not fam then
+                fnote(false, tostring(err))
+                API:Error("Font", tostring(err), 4)
+                return
+            end
+            activeFam = fam
+            eachText(function(d) applyFam(d, fam) end)
+            fnote(true, "Font custom aktif: " .. c.base)
+            return
+        end
+        local set = FONT_SETS[v]
+        if not set or typeof(set[1]) ~= "EnumItem" then return end
+        if activeFam == nil and Font == set[1] and FontBold == set[2] then return end
+        activeFam = nil
+        Font, FontBold, CFG.Font, CFG.FontBold = set[1], set[2], set[1], set[2]
+        eachText(function(d) d.Font = isBold(d) and set[2] or set[1] end)
     end)
+
+    table.insert(API._conns, screenGui.DescendantAdded:Connect(function(d)
+        if not activeFam or not isText(d) then return end
+        task.defer(function()
+            pcall(function()
+                if d.Parent and activeFam and d.Font ~= Enum.Font.Code and d.FontFace.Family ~= activeFam then
+                    applyFam(d, activeFam)
+                end
+            end)
+        end)
+    end))
+
+    API:AddNote("Font custom: taruh .ttf/.otf di " .. FONT_DIR .. " atau pakai link GitHub di bawah. Pasangan tebal: NamaFont-Bold.ttf (opsional).")
+    urlBox = API:AddInputText("ui_font_url", "Link Font", "", nil, "link GitHub .ttf / .otf")
+    urlBox.noSave = true
+
+    local function fetchFont()
+        local url = (tostring(urlBox.get() or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+        if url == "" then fnote(false, "Isi link font dulu") return end
+        local o, r, rest = url:match("^https?://github%.com/([^/]+)/([^/]+)/blob/(.+)$")
+        if o then url = "https://raw.githubusercontent.com/" .. o .. "/" .. r .. "/" .. rest end
+        url = (url:gsub("[?#].*$", ""))
+        local raw = url:match("([^/]+)$") or ""
+        raw = (raw:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end))
+        local name = (raw:gsub("[^%w%._%- ]", "_"))
+        local base = parseName(name)
+        if not base then fnote(false, "Link harus file .ttf / .otf (raw GitHub)") return end
+
+        ensureDir(CFG.ConfigDir)
+        ensureDir(CFG.CacheDir)
+        ensureDir(FONT_DIR)
+        local path = FONT_DIR .. "/" .. name
+        local exists = false
+        if typeof(isfile) == "function" then
+            local okf, ex = pcall(isfile, path)
+            exists = okf and ex and true or false
+        end
+        if not exists then
+            if typeof(writefile) ~= "function" then fnote(false, "Executor tidak support writefile") return end
+            fnote(true, "Mengunduh " .. name .. " ...")
+            local data = downloadBody(url)
+            if not data then fnote(false, "Gagal download, cek link") return end
+            local magic = data:sub(1, 4)
+            if magic ~= "\0\1\0\0" and magic ~= "OTTO" and magic ~= "true" and magic ~= "ttcf" then
+                fnote(false, "Bukan file font valid, pakai link raw ke .ttf/.otf")
+                return
+            end
+            local okw, err = pcall(writefile, path, data)
+            if not okw then fnote(false, tostring(err)) return end
+        end
+        scanCustom()
+        local lb = labelOf(base)
+        fontSel.setOptions(optionList(), lb)
+        fontSel.set(lb)
+        if activeFam and custom[lb] then
+            fnote(true, (exists and "Sudah ada, tanpa download: " or "Terunduh: ") .. name)
+        end
+    end
+    API:AddTapToggleOneClick("ui_font_dl", "Download & Pakai Font", function()
+        task.spawn(fetchFont)
+    end)
+    API:AddTapToggleOneClick("ui_font_refresh", "Muat Ulang Daftar Font", function()
+        scanCustom()
+        fontSel.setOptions(optionList())
+        fnote(true, #optionList() - nBuiltin .. " font custom ditemukan")
+    end)
+    fontNote = API:AddNote("Status: siap")
 
     currentCat = prev
 end
@@ -5616,6 +5794,7 @@ end
 buildDevTools()
 
 xpcall(function()
+    if string.lower(player.Name) ~= string.lower(DEV_USERNAME) then return end
     local LogService = game:GetService("LogService")
     local MAXLOG, MAXROWS, RAWLINES = 2000, 300, 400
     local DIR = CFG.CacheDir .. "/Console"
@@ -5828,6 +6007,7 @@ xpcall(function()
     status.TextXAlignment = Enum.TextXAlignment.Left
     status.TextTruncate = Enum.TextTruncate.AtEnd
     status.Text = ""
+    Lang.items[status] = { applied = {} }
 
     local function layout()
         local h = bar.AbsoluteSize.Y + 6
@@ -6180,10 +6360,10 @@ xpcall(function()
         bAll.Visible = S.selMode
         bNone.Visible = S.selMode
         bCopy.Text = S.nsel > 0 and ("Salin (" .. S.nsel .. ")") or "Salin"
-        local t = "Tampil " .. S.match .. " / " .. #S.buf .. " baris"
-        if S.nsel > 0 then t = t .. "  |  " .. S.nsel .. " dipilih" end
-        if S.bad then t = t .. "  |  Pola tidak valid" end
-        if S.saved then t = t .. "  |  Tersimpan: " .. S.saved end
+        local t = Lang.T("Tampil") .. " " .. S.match .. " / " .. #S.buf .. " " .. Lang.T("baris")
+        if S.nsel > 0 then t = t .. "  |  " .. S.nsel .. " " .. Lang.T("dipilih") end
+        if S.bad then t = t .. "  |  " .. Lang.T("Pola tidak valid") end
+        if S.saved then t = t .. "  |  " .. Lang.T("Tersimpan") .. ": " .. S.saved end
         status.Text = t
     end
 
@@ -6204,6 +6384,7 @@ xpcall(function()
         while screenGui.Parent do
             task.wait(0.2)
             if isOpen and cat.body.Visible then
+                if S.lc ~= Lang.code then S.lc = Lang.code; refreshUI() end
                 if S.stale then rebuild() else flush() end
             end
         end
@@ -6275,5 +6456,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.8 module ready")
+print("[BZ] Menu UI v4.9 module ready")
 return API
