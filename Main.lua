@@ -187,7 +187,7 @@ menu.ClipsDescendants = true
 Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 22)
 local menuStroke = Instance.new("UIStroke", menu)
 menuStroke.Color = Color3.new(1, 1, 1)
-menuStroke.Thickness = 1.5
+menuStroke.Thickness = 1
 menuStroke.Transparency = 0.2
 local menuStrokeGrad
 do
@@ -213,6 +213,7 @@ local headerLine = Instance.new("Frame", header)
 headerLine.Size = UDim2.new(1, 0, 0, 1)
 headerLine.Position = UDim2.new(0, 0, 1, -1)
 headerLine.BackgroundColor3 = C.Stroke
+headerLine.BackgroundTransparency = 0.6
 headerLine.BorderSizePixel = 0
 
 local headerIconText, headerIconImage, title, versionPill, versionLabel, subtitle
@@ -225,7 +226,7 @@ headerIcon.Size = UDim2.fromOffset(34, 34)
 headerIcon.BackgroundColor3 = C.Accent
 headerIcon.BorderSizePixel = 0
 headerIcon.ClipsDescendants = true
-Instance.new("UICorner", headerIcon).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", headerIcon).CornerRadius = UDim.new(1, 0)
 
 headerIconText = Instance.new("TextLabel", headerIcon)
 headerIconText.Size = UDim2.fromScale(1, 1)
@@ -241,6 +242,7 @@ headerIconImage.BackgroundTransparency = 1
 headerIconImage.BorderSizePixel = 0
 headerIconImage.ScaleType = Enum.ScaleType.Crop
 headerIconImage.Visible = false
+Instance.new("UICorner", headerIconImage).CornerRadius = UDim.new(1, 0)
 
 local HEADER_CTL_W = 108
 local titleRow = Instance.new("Frame", header)
@@ -272,7 +274,7 @@ versionPill.Name = "VersionPill"
 versionPill.LayoutOrder = 2
 versionPill.Size = UDim2.new(0, 0, 0, 16)
 versionPill.AutomaticSize = Enum.AutomaticSize.X
-versionPill.BackgroundColor3 = C.Text
+versionPill.BackgroundColor3 = C.Surface2
 versionPill.BorderSizePixel = 0
 Instance.new("UICorner", versionPill).CornerRadius = UDim.new(1, 0)
 local versionPad = Instance.new("UIPadding", versionPill)
@@ -282,10 +284,10 @@ versionLabel = Instance.new("TextLabel", versionPill)
 versionLabel.Size = UDim2.new(0, 0, 1, 0)
 versionLabel.AutomaticSize = Enum.AutomaticSize.X
 versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "v4.9"
+versionLabel.Text = "v5.0"
 versionLabel.Font = FontBold
 versionLabel.TextSize = 10
-versionLabel.TextColor3 = C.Bg
+versionLabel.TextColor3 = C.TextDim
 
 subtitle = Instance.new("TextLabel", header)
 subtitle.Size = UDim2.new(1, -(58 + HEADER_CTL_W), 0, 14)
@@ -971,11 +973,12 @@ end
 local function relayout(animate)
     local w = 0
     if tabBar.Visible then w = sideCollapsed and SIDE_C or SIDE_W end
-    local sideSize = UDim2.new(0, w, 1, -CFG.HeaderH - (tabBar.Visible and PROFILE_H or 0))
+    local sideSize = UDim2.new(0, w, 1, -CFG.HeaderH - (tabBar.Visible and (PROFILE_H + (API._sideExtra or 0)) or 0))
     local contentPos = UDim2.fromOffset(w, CFG.HeaderH)
     local contentSize = UDim2.new(1, -w, 1, -CFG.HeaderH)
     sideLine.Visible = tabBar.Visible
     profile.Visible = tabBar.Visible and not profile:GetAttribute("Min")
+    if API._syncSide then API._syncSide(w, animate) end
     local profSize = UDim2.fromOffset(w, PROFILE_H)
     if animate then
         local info = TweenInfo.new(0.2, Enum.EasingStyle.Quart)
@@ -993,7 +996,11 @@ local function relayout(animate)
 end
 
 do
-    local realName, realUser = player.DisplayName, "@" .. player.Name
+    local realName = player.DisplayName
+    local function subText()
+        local ok2, sx = pcall(function() return API._profileSub and API._profileSub() end)
+        return (ok2 and type(sx) == "string" and sx ~= "") and sx or "Free"
+    end
     local censored = false
     local eyeBtn = Instance.new("TextButton", profile)
     eyeBtn.Name = "EyeBtn"
@@ -1030,9 +1037,10 @@ do
             eyeTxt.Visible = true
         end
         profName.Text = censored and "••••••" or realName
-        profUser.Text = censored and "@••••••" or realUser
+        profUser.Text = subText()
     end
     refreshEye()
+    API._refreshProfile = refreshEye
     eyeBtn.MouseButton1Click:Connect(function()
         censored = not censored
         refreshEye()
@@ -1105,7 +1113,7 @@ function API:SelectCategory(name)
     for n, cat in pairs(categories) do
         local on = (n == name)
         local info = TweenInfo.new(0.15)
-        TweenService:Create(cat.button, info, {BackgroundTransparency = on and 0 or 1}):Play()
+        TweenService:Create(cat.button, info, {BackgroundTransparency = on and 0.82 or 1}):Play()
         if cat.bar then
             TweenService:Create(cat.bar, info, {
                 BackgroundTransparency = on and 0 or 1,
@@ -1164,13 +1172,13 @@ local function createCategory(name, labelText, explicit, opts)
 
     local btn = Instance.new("TextButton", tabBar)
     btn.Name = name .. "_Tab"
-    btn.Size = UDim2.new(1, 0, 0, 40)
-    btn.BackgroundColor3 = C.Surface2
+    btn.Size = UDim2.new(1, 0, 0, 36)
+    btn.BackgroundColor3 = C.Accent
     btn.BackgroundTransparency = 1
     btn.AutoButtonColor = false
     btn.Text = ""
     btn.LayoutOrder = (opts and opts.order) or categoryOrder
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
 
     local bar = Instance.new("Frame", btn)
     bar.Name = "ActiveBar"
@@ -1484,8 +1492,8 @@ end
 do
     local box = Instance.new("Frame", header)
     box.Name = "SearchBox"
-    box.AnchorPoint = Vector2.new(0.5, 0)
-    box.Position = UDim2.new(0.5, 0, 0, 10)
+    box.AnchorPoint = Vector2.new(1, 0)
+    box.Position = UDim2.new(1, -108, 0, 10)
     box.Size = UDim2.fromOffset(200, 32)
     box.BackgroundColor3 = C.Surface
     box.BorderSizePixel = 0
@@ -1517,7 +1525,7 @@ do
     local tb = Instance.new("TextBox", box)
     tb.Name = "SearchInput"
     tb.Position = UDim2.fromOffset(34, 0)
-    tb.Size = UDim2.new(1, -66, 1, 0)
+    tb.Size = UDim2.new(1, -100, 1, 0)
     tb.BackgroundTransparency = 1
     tb.BorderSizePixel = 0
     tb.ClearTextOnFocus = false
@@ -1543,6 +1551,21 @@ do
     clear.TextColor3 = C.TextDim
     clear.Visible = false
 
+    local hint = Instance.new("TextLabel", box)
+    hint.Name = "SearchHint"
+    hint.AnchorPoint = Vector2.new(1, 0.5)
+    hint.Position = UDim2.new(1, -8, 0.5, 0)
+    hint.Size = UDim2.new(0, 0, 0, 18)
+    hint.AutomaticSize = Enum.AutomaticSize.X
+    hint.BackgroundColor3 = C.Surface2
+    hint.BorderSizePixel = 0
+    hint.Font = FontBold
+    hint.TextSize = 10
+    hint.TextColor3 = C.TextDim
+    hint.Text = " Ctrl "
+    Instance.new("UICorner", hint).CornerRadius = UDim.new(0, 6)
+    clear:GetPropertyChangedSignal("Visible"):Connect(function() hint.Visible = not clear.Visible end)
+
     tb.Focused:Connect(function()
         TweenService:Create(boxStroke, TweenInfo.new(0.12), {Color = C.Accent, Transparency = 0.2}):Play()
     end)
@@ -1550,11 +1573,16 @@ do
         TweenService:Create(boxStroke, TweenInfo.new(0.12), {Color = C.Stroke, Transparency = 0.6}):Play()
     end)
 
+    local function refreshHint()
+        local okk, key = pcall(function() return API:GetKeyBind("ui_menu_key") end)
+        local ks = "Ctrl"
+        if okk and key ~= nil then ks = (tostring(key):gsub("^Enum%.KeyCode%.", "")) end
+        hint.Text = " " .. ks .. " "
+    end
     local function layoutBox()
         local textW = math.max(title.TextBounds.X + 8 + versionLabel.TextBounds.X + 14, subtitle.TextBounds.X)
         local W = menu.Size.X.Offset
-        local half = math.min(W / 2 - (58 + textW + 16), (W - 116) - W / 2)
-        local width = math.min(240, half * 2)
+        local width = math.min(240, (W - 108) - (58 + textW + 16))
         if profile:GetAttribute("Min") or width < 90 then
             box.Visible = false
             return
@@ -1568,6 +1596,8 @@ do
     menu:GetPropertyChangedSignal("Size"):Connect(layoutBox)
     profile:GetAttributeChangedSignal("Min"):Connect(layoutBox)
     layoutBox()
+    API._layoutBox = function() layoutBox() refreshHint() end
+    refreshHint()
 
     local function rowText(row)
         local parts = {}
@@ -2150,6 +2180,7 @@ function API:AddToggle(name, labelText, default, callback, style)
         set = setState,
         get = function() return state end,
         row = row,
+        label = labelText,
         setStyle = setStyle,
     }
     if default and callback then pcall(callback, true) end
@@ -3965,6 +3996,7 @@ end
 function API:SetVIPUser(on)
     vipUser = on and true or false
     for _, e in pairs(registry) do refreshVIP(e) end
+    if API._refreshProfile then pcall(API._refreshProfile) end
 end
 
 function API:IsVIPUser()
@@ -4824,10 +4856,17 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v4.9"
-local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown" }
+local BZ_VERSION = "v5.0"
+local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown", Version = "v5.0" }
 local logoSizeValue = 44
 local deskripsiText, versionShow = TEXT_DEFAULTS.Deskripsi, true
+
+API._versionHooks = {}
+API._profileSub = function() return (vipUser and "VIP" or "Free") .. " · " .. BZ_VERSION end
+API._textKeys = {
+    title = "Title", logo = "Logo", version = "Version",
+    deskripsi = "Deskripsi", studio = "Studio", showversion = "ShowVersion",
+}
 
 local function refreshLogoText()
     local len = utf8.len(logoText.Text) or #logoText.Text
@@ -4836,12 +4875,41 @@ local function refreshLogoText()
     logoText.TextSize = math.max(8, math.floor(size))
 end
 
-local function refreshDeskripsi()
-    subtitle.Text = deskripsiText
+function API._refreshVersion()
     versionLabel.Text = BZ_VERSION
     versionPill.Visible = versionShow
+    for _, fn in ipairs(API._versionHooks) do pcall(fn, BZ_VERSION) end
+    if API._refreshProfile then pcall(API._refreshProfile) end
+    pcall(relayout, false)
+    if API._layoutBox then
+        pcall(API._layoutBox)
+        task.defer(function() pcall(API._layoutBox) end)
+    end
+end
+
+function API._cleanVersion(v)
+    if type(v) ~= "string" then return nil end
+    v = v:match("^%s*(.-)%s*$")
+    if v == "" then return nil end
+    if #v > 20 then v = v:sub(1, 20) end
+    return v
+end
+
+local function refreshDeskripsi()
+    subtitle.Text = deskripsiText
+    API._refreshVersion()
 end
 refreshDeskripsi()
+
+function API:SetVersion(v)
+    local nv = API._cleanVersion(v)
+    if not nv then return false end
+    BZ_VERSION = nv
+    API._refreshVersion()
+    return true
+end
+
+function API:GetVersion() return BZ_VERSION end
 
 function API:SetTitle(text)
     if text == nil or tostring(text) == "" then text = TEXT_DEFAULTS.Title end
@@ -4866,16 +4934,30 @@ end
 API.SetStudio = API.SetDeskripsi
 
 function API:SetTexts(t)
-    t = t or {}
+    if type(t) ~= "table" then return end
     if t.Title ~= nil then API:SetTitle(t.Title) end
     if t.Logo ~= nil then API:SetLogoText(t.Logo) end
+    if t.Version ~= nil then API:SetVersion(t.Version) end
     local d = t.Deskripsi
     if d == nil then d = t.Studio end
-    if d ~= nil then API:SetDeskripsi(d, t.ShowVersion) end
+    if d ~= nil then
+        API:SetDeskripsi(d, t.ShowVersion)
+    elseif t.ShowVersion ~= nil then
+        versionShow = t.ShowVersion and true or false
+        refreshDeskripsi()
+    end
+end
+
+function API:SetText(key, value)
+    local k = type(key) == "string" and API._textKeys[key:lower()] or nil
+    if not k then return false end
+    API:SetTexts({ [k] = value })
+    return true
 end
 
 function API:ResetTexts()
     versionShow = true
+    BZ_VERSION = TEXT_DEFAULTS.Version
     API:SetTitle(nil)
     API:SetLogoText(nil)
     API:SetDeskripsi(nil)
@@ -4883,9 +4965,97 @@ end
 
 local HOME_DISCORD_INVITE = "https://discord.gg/vZmZcvrfU7"
 
+do
+    local DC_H = 34
+    API._sideExtra = DC_H + 8
+    API._clip = function(text)
+        local fn = (typeof(setclipboard) == "function" and setclipboard)
+            or (typeof(toclipboard) == "function" and toclipboard)
+        if not fn then return false end
+        return (pcall(fn, text))
+    end
+
+    local dc = Instance.new("TextButton", menu)
+    dc.Name = "DiscordBtn"
+    dc.AnchorPoint = Vector2.new(0, 1)
+    dc.AutoButtonColor = false
+    dc.Text = ""
+    dc.BackgroundColor3 = C.Surface
+    dc.BorderSizePixel = 0
+    dc.Visible = false
+    Instance.new("UICorner", dc).CornerRadius = UDim.new(0, 10)
+    local dcStroke = Instance.new("UIStroke", dc)
+    dcStroke.Color = C.Stroke
+    dcStroke.Thickness = 1
+    dcStroke.Transparency = 0.6
+
+    local ico
+    local ik, iv = resolveIcon("message-circle")
+    if ik == "image" then
+        ico = Instance.new("ImageLabel", dc)
+        ico.Image = iv
+        ico.ImageColor3 = C.Accent
+    else
+        ico = Instance.new("TextLabel", dc)
+        ico.Text = "D"
+        ico.Font = FontBold
+        ico.TextSize = 14
+        ico.TextColor3 = C.Accent
+    end
+    ico.AnchorPoint = Vector2.new(0, 0.5)
+    ico.Position = UDim2.new(0, 10, 0.5, 0)
+    ico.Size = UDim2.fromOffset(16, 16)
+    ico.BackgroundTransparency = 1
+
+    local lbl = Instance.new("TextLabel", dc)
+    lbl.BackgroundTransparency = 1
+    lbl.Position = UDim2.fromOffset(34, 0)
+    lbl.Size = UDim2.new(1, -40, 1, 0)
+    lbl.Text = "Discord"
+    lbl.Font = FontBold
+    lbl.TextSize = 13
+    lbl.TextColor3 = C.Text
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    API._syncSide = function(w, animate)
+        local size = UDim2.fromOffset(math.max(w - 16, 0), DC_H)
+        dc.Position = UDim2.new(0, 8, 1, -(PROFILE_H + 6))
+        lbl.Visible = not sideCollapsed
+        if sideCollapsed then
+            ico.AnchorPoint = Vector2.new(0.5, 0.5)
+            ico.Position = UDim2.fromScale(0.5, 0.5)
+        else
+            ico.AnchorPoint = Vector2.new(0, 0.5)
+            ico.Position = UDim2.new(0, 10, 0.5, 0)
+        end
+        if animate then
+            TweenService:Create(dc, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {Size = size}):Play()
+        else
+            dc.Size = size
+        end
+        dc.Visible = tabBar.Visible and profile.Visible
+    end
+    profile:GetPropertyChangedSignal("Visible"):Connect(function()
+        dc.Visible = tabBar.Visible and profile.Visible
+    end)
+
+    dc.MouseButton1Click:Connect(function()
+        if HOME_DISCORD_INVITE == "" then
+            API:Warn("Discord", "Isi HOME_DISCORD_INVITE di kode menu dulu", 3)
+        elseif API._clip(HOME_DISCORD_INVITE) then
+            API:Success("Tersalin", HOME_DISCORD_INVITE, 3)
+        else
+            API:Error("Gagal menyalin", "Executor tidak support clipboard", 3)
+        end
+    end)
+
+    relayout()
+end
+
 local function buildHomeCategory()
     local MarketplaceService = game:GetService("MarketplaceService")
-    local LocalizationService = game:GetService("LocalizationService")
+    local TeleportService = game:GetService("TeleportService")
+    local RunService = game:GetService("RunService")
     local StatsService = game:GetService("Stats")
 
     local prev = currentCat
@@ -4893,13 +5063,10 @@ local function buildHomeCategory()
     currentCat = "home"
     local body = categories["home"].body
     local joinedAt = os.clock()
-
-    local function homeCopy(text)
-        local fn = (typeof(setclipboard) == "function" and setclipboard)
-            or (typeof(toclipboard) == "function" and toclipboard)
-        if not fn then return false end
-        return (pcall(fn, text))
-    end
+    local FPS_FULL = 120
+    local PERF_W = 172
+    local gameName = game.Name
+    local displayName = player.DisplayName ~= "" and player.DisplayName or player.Name
 
     local function newLabel(parent, text, size, bold, color, pos, sz)
         local l = Instance.new("TextLabel", parent)
@@ -4916,124 +5083,139 @@ local function buildHomeCategory()
         return l
     end
 
-    local function newCard(order, tint, tintAlpha, fixedH, parent)
-        local f = Instance.new("Frame", parent or body)
-        f.Name = "HomeCard_" .. order
+    local function card(parent, order, h)
+        local f = Instance.new("Frame", parent)
         f.LayoutOrder = order
         f.BackgroundColor3 = C.Surface
         f.BorderSizePixel = 0
-        f.Size = UDim2.new(1, 0, 0, fixedH or 0)
-        if not fixedH then f.AutomaticSize = Enum.AutomaticSize.Y end
-        Instance.new("UICorner", f).CornerRadius = UDim.new(0, 12)
+        f.Size = UDim2.new(1, 0, 0, h)
+        Instance.new("UICorner", f).CornerRadius = UDim.new(0, 14)
         local s = Instance.new("UIStroke", f)
         s.Color = C.Stroke
         s.Thickness = 1
         s.Transparency = 0.6
+        return f
+    end
 
-        local overlay
-        if tint then
-            overlay = Instance.new("Frame", f)
-            overlay.Name = "Tint"
-            overlay.Size = UDim2.fromScale(1, 1)
-            overlay.BackgroundColor3 = tint
-            overlay.BorderSizePixel = 0
-            Instance.new("UICorner", overlay).CornerRadius = UDim.new(0, 12)
-            local g = Instance.new("UIGradient", overlay)
+    local function icon(parent, name, glyph, size, color, pos)
+        local k, v = resolveIcon(name)
+        local o
+        if k == "image" then
+            o = Instance.new("ImageLabel", parent)
+            o.Image = v
+            o.ImageColor3 = color
+        else
+            o = Instance.new("TextLabel", parent)
+            o.Text = glyph
+            o.Font = FontBold
+            o.TextSize = size
+            o.TextColor3 = color
+        end
+        o.BackgroundTransparency = 1
+        o.Size = UDim2.fromOffset(size, size)
+        o.Position = pos
+        return o
+    end
+
+    local function chip(parent, order, text)
+        local c = Instance.new("Frame", parent)
+        c.LayoutOrder = order
+        c.BackgroundColor3 = C.Surface2
+        c.BorderSizePixel = 0
+        c.Size = UDim2.new(0, 0, 0, 22)
+        c.AutomaticSize = Enum.AutomaticSize.X
+        Instance.new("UICorner", c).CornerRadius = UDim.new(0, 8)
+        local p = Instance.new("UIPadding", c)
+        p.PaddingLeft = UDim.new(0, 8)
+        p.PaddingRight = UDim.new(0, 8)
+        local l = Instance.new("TextLabel", c)
+        l.BackgroundTransparency = 1
+        l.Size = UDim2.new(0, 0, 1, 0)
+        l.AutomaticSize = Enum.AutomaticSize.X
+        l.Text = text
+        l.Font = FontBold
+        l.TextSize = 11
+        l.TextColor3 = C.Text
+        return function(t) l.Text = tostring(t) end
+    end
+
+    local function chipRow(parent, y)
+        local r = Instance.new("Frame", parent)
+        r.BackgroundTransparency = 1
+        r.Position = UDim2.fromOffset(80, y)
+        r.Size = UDim2.new(1, -92, 0, 22)
+        r.ClipsDescendants = true
+        local lay = Instance.new("UIListLayout", r)
+        lay.FillDirection = Enum.FillDirection.Horizontal
+        lay.Padding = UDim.new(0, 6)
+        lay.SortOrder = Enum.SortOrder.LayoutOrder
+        return r
+    end
+
+    local function makeRing(parent, D, thick)
+        local holder = Instance.new("Frame", parent)
+        holder.BackgroundTransparency = 1
+        holder.BorderSizePixel = 0
+        holder.Size = UDim2.fromOffset(D, D)
+        local inner = D - thick * 2
+
+        local track = Instance.new("Frame", holder)
+        track.BackgroundTransparency = 1
+        track.BorderSizePixel = 0
+        track.Position = UDim2.fromOffset(thick, thick)
+        track.Size = UDim2.fromOffset(inner, inner)
+        Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+        local ts = Instance.new("UIStroke", track)
+        ts.Color = C.Surface2
+        ts.Thickness = thick
+        ts.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+        local function half(right)
+            local clipF = Instance.new("Frame", holder)
+            clipF.BackgroundTransparency = 1
+            clipF.BorderSizePixel = 0
+            clipF.ClipsDescendants = true
+            clipF.Position = UDim2.new(right and 0.5 or 0, 0, 0, 0)
+            clipF.Size = UDim2.new(0.5, 0, 1, 0)
+            local circ = Instance.new("Frame", clipF)
+            circ.BackgroundTransparency = 1
+            circ.BorderSizePixel = 0
+            circ.Position = UDim2.fromOffset(right and (thick - D / 2) or thick, thick)
+            circ.Size = UDim2.fromOffset(inner, inner)
+            Instance.new("UICorner", circ).CornerRadius = UDim.new(1, 0)
+            local st = Instance.new("UIStroke", circ)
+            st.Color = C.Accent
+            st.Thickness = thick
+            st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            local g = Instance.new("UIGradient", st)
             g.Transparency = NumberSequence.new({
-                NumberSequenceKeypoint.new(0, tintAlpha or 0.6),
+                NumberSequenceKeypoint.new(0, 0),
+                NumberSequenceKeypoint.new(0.5, 0),
+                NumberSequenceKeypoint.new(0.501, 1),
                 NumberSequenceKeypoint.new(1, 1),
             })
+            return g
         end
-
-        local content = Instance.new("Frame", f)
-        content.Name = "Content"
-        content.BackgroundTransparency = 1
-        content.BorderSizePixel = 0
-        content.Size = UDim2.new(1, 0, 0, fixedH or 0)
-        if not fixedH then content.AutomaticSize = Enum.AutomaticSize.Y end
-        local pad = Instance.new("UIPadding", content)
-        pad.PaddingTop = UDim.new(0, 12)
-        pad.PaddingBottom = UDim.new(0, 12)
-        pad.PaddingLeft = UDim.new(0, 12)
-        pad.PaddingRight = UDim.new(0, 12)
-        return f, content, overlay
-    end
-
-    local function stackLayout(content)
-        local lay = Instance.new("UIListLayout", content)
-        lay.Padding = UDim.new(0, 8)
-        lay.SortOrder = Enum.SortOrder.LayoutOrder
-        return lay
-    end
-
-    local function newHeading(parent, title, desc, order)
-        local h = Instance.new("Frame", parent)
-        h.BackgroundTransparency = 1
-        h.Size = UDim2.new(1, 0, 0, 0)
-        h.AutomaticSize = Enum.AutomaticSize.Y
-        h.LayoutOrder = order
-        newLabel(h, title, 15, true, C.Text, UDim2.fromOffset(0, 0), UDim2.new(1, 0, 0, 18))
-        local d = newLabel(h, desc, 11, false, C.TextDim, UDim2.fromOffset(0, 19), UDim2.new(1, 0, 0, 0))
-        d.AutomaticSize = Enum.AutomaticSize.Y
-        d.TextWrapped = true
-        d.TextTruncate = Enum.TextTruncate.None
-        d.TextYAlignment = Enum.TextYAlignment.Top
-        return h
-    end
-
-    local function newGrid(parent, order)
-        local g = Instance.new("Frame", parent)
-        g.BackgroundTransparency = 1
-        g.Size = UDim2.new(1, 0, 0, 0)
-        g.AutomaticSize = Enum.AutomaticSize.Y
-        g.LayoutOrder = order
-        local lay = Instance.new("UIGridLayout", g)
-        lay.CellSize = UDim2.new(0.5, -4, 0, 46)
-        lay.CellPadding = UDim2.fromOffset(8, 8)
-        lay.SortOrder = Enum.SortOrder.LayoutOrder
-        return g
-    end
-
-    local function newTile(parent, order, title, value, onClick)
-        local t = Instance.new(onClick and "TextButton" or "Frame", parent)
-        t.LayoutOrder = order
-        t.BackgroundColor3 = C.Surface2
-        t.BorderSizePixel = 0
-        if onClick then
-            t.AutoButtonColor = false
-            t.Text = ""
-            t.MouseButton1Click:Connect(onClick)
+        local gR, gL = half(true), half(false)
+        local function setProgress(p)
+            local a = math.clamp(p, 0, 1) * 360
+            gR.Rotation = math.clamp(a, 0, 180)
+            gL.Rotation = math.clamp(a, 180, 360)
         end
-        Instance.new("UICorner", t).CornerRadius = UDim.new(0, 10)
-        newLabel(t, title, 12, true, C.Text, UDim2.fromOffset(10, 6), UDim2.new(1, -20, 0, 16))
-        local v = newLabel(t, value, 11, false, C.TextDim, UDim2.fromOffset(10, 24), UDim2.new(1, -20, 0, 14))
-        return function(text) v.Text = tostring(text) end
+        setProgress(0)
+        return holder, setProgress
     end
 
-    local _, hero = newCard(1, nil, nil, 80)
-    local avatar = Instance.new("ImageLabel", hero)
-    avatar.Size = UDim2.fromOffset(56, 56)
-    avatar.BackgroundColor3 = C.Surface2
-    avatar.BorderSizePixel = 0
-    avatar.Image = ""
-    Instance.new("UICorner", avatar).CornerRadius = UDim.new(0, 12)
-    local displayName = player.DisplayName ~= "" and player.DisplayName or player.Name
-    newLabel(hero, "Hello, " .. displayName, 16, true, C.Text, UDim2.fromOffset(68, 4), UDim2.new(1, -68, 0, 24))
-    local heroSub = newLabel(hero, "@" .. player.Name, 12, false, C.TextDim, UDim2.fromOffset(68, 30), UDim2.new(1, -68, 0, 18))
-
-    task.spawn(function()
-        local ok, url = pcall(function()
-            return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
-        end)
-        if ok and url and avatar.Parent then avatar.Image = url end
-    end)
-    task.spawn(function()
-        local ok, info = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end)
-        local gameName = (ok and info and info.Name) or game.Name
-        if heroSub.Parent and gameName and gameName ~= "" then
-            heroSub.Text = "@" .. player.Name .. " · " .. gameName
-        end
-    end)
+    local head = Instance.new("Frame", body)
+    head.Name = "HomeHead"
+    head.LayoutOrder = 1
+    head.BackgroundTransparency = 1
+    head.Size = UDim2.new(1, 0, 0, 40)
+    newLabel(head, "Home", 20, true, C.Text, UDim2.fromOffset(0, 0), UDim2.new(1, -60, 0, 24))
+    newLabel(head, "your session at a glance", 12, false, C.TextDim, UDim2.fromOffset(0, 24), UDim2.new(1, -60, 0, 14))
+    local verLbl = newLabel(head, BZ_VERSION, 11, true, C.TextDim, UDim2.new(1, -56, 0, 4), UDim2.fromOffset(56, 16))
+    verLbl.TextXAlignment = Enum.TextXAlignment.Right
+    API._versionHooks[#API._versionHooks + 1] = function(v) verLbl.Text = v end
 
     local row = Instance.new("Frame", body)
     row.Name = "HomeRow"
@@ -5048,157 +5230,359 @@ local function buildHomeCategory()
     rowLay.SortOrder = Enum.SortOrder.LayoutOrder
     rowLay.VerticalAlignment = Enum.VerticalAlignment.Top
 
-    local function newColumn(order)
-        local col = Instance.new("Frame", row)
-        col.LayoutOrder = order
-        col.BackgroundTransparency = 1
-        col.BorderSizePixel = 0
-        col.AutomaticSize = Enum.AutomaticSize.Y
-        local lay = Instance.new("UIListLayout", col)
-        lay.Padding = UDim.new(0, 8)
-        lay.SortOrder = Enum.SortOrder.LayoutOrder
-        return col
-    end
-    local colLeft, colRight = newColumn(1), newColumn(2)
+    local colLeft = Instance.new("Frame", row)
+    colLeft.LayoutOrder = 1
+    colLeft.BackgroundTransparency = 1
+    colLeft.BorderSizePixel = 0
+    colLeft.AutomaticSize = Enum.AutomaticSize.Y
+    local leftLay = Instance.new("UIListLayout", colLeft)
+    leftLay.Padding = UDim.new(0, 8)
+    leftLay.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local perf = card(row, 2, 164)
 
     local stacked
     local function applyColumns()
-        local narrow = row.AbsoluteSize.X > 0 and row.AbsoluteSize.X < 340
+        local w = row.AbsoluteSize.X
+        local narrow = w > 0 and w < 420
         if narrow == stacked then return end
         stacked = narrow
         rowLay.FillDirection = narrow and Enum.FillDirection.Vertical or Enum.FillDirection.Horizontal
-        colLeft.Size = narrow and UDim2.new(1, 0, 0, 0) or UDim2.new(0.52, -4, 0, 0)
-        colRight.Size = narrow and UDim2.new(1, 0, 0, 0) or UDim2.new(0.48, -4, 0, 0)
+        colLeft.Size = narrow and UDim2.new(1, 0, 0, 0) or UDim2.new(1, -(PERF_W + 8), 0, 0)
+        perf.Size = narrow and UDim2.new(1, 0, 0, 164) or UDim2.fromOffset(PERF_W, 164)
     end
     applyColumns()
     row:GetPropertyChangedSignal("AbsoluteSize"):Connect(applyColumns)
 
-    local _, serverBox = newCard(1, C.On, 0.78, nil, colLeft)
-    stackLayout(serverBox)
-    newHeading(serverBox, "Server", "Information on the session you're currently in", 1)
-    local serverGrid = newGrid(serverBox, 2)
-    local setPlayers = newTile(serverGrid, 1, "Players", "-")
-    local setMax = newTile(serverGrid, 2, "Max Players", "-")
-    local setPing = newTile(serverGrid, 3, "Latency", "-")
-    local setRegion = newTile(serverGrid, 4, "Your Region", "-")
-    local setTime = newTile(serverGrid, 5, "In server for", "00:00:00")
-    newTile(serverGrid, 6, "Join Script", "Tap to copy", function()
-        local joinCode = string.format(
-            'game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game:GetService("Players").LocalPlayer)',
-            game.PlaceId, game.JobId)
-        if homeCopy(joinCode) then
-            API:Success("Tersalin", "Join script", 2)
-        else
-            API:Error("Gagal menyalin", "Executor tidak support clipboard", 3)
-        end
-    end)
+    local welcome = card(colLeft, 1, 64)
+    local av = Instance.new("ImageLabel", welcome)
+    av.Position = UDim2.fromOffset(12, 10)
+    av.Size = UDim2.fromOffset(44, 44)
+    av.BackgroundColor3 = C.Surface2
+    av.BorderSizePixel = 0
+    Instance.new("UICorner", av).CornerRadius = UDim.new(1, 0)
+    newLabel(welcome, "Welcome back, " .. displayName, 15, true, C.Text, UDim2.fromOffset(66, 11), UDim2.new(1, -78, 0, 20))
+    local wSub = newLabel(welcome, gameName, 12, false, C.TextDim, UDim2.fromOffset(66, 33), UDim2.new(1, -78, 0, 16))
+
+    local gcard = card(colLeft, 2, 92)
+    local gIcon = Instance.new("ImageLabel", gcard)
+    gIcon.Position = UDim2.fromOffset(12, 18)
+    gIcon.Size = UDim2.fromOffset(56, 56)
+    gIcon.BackgroundColor3 = C.Surface2
+    gIcon.BorderSizePixel = 0
+    Instance.new("UICorner", gIcon).CornerRadius = UDim.new(0, 14)
+    if game.GameId ~= 0 then
+        gIcon.Image = "rbxthumb://type=GameIcon&id=" .. game.GameId .. "&w=150&h=150"
+    end
+    local gName = newLabel(gcard, gameName, 15, true, C.Text, UDim2.fromOffset(80, 8), UDim2.new(1, -92, 0, 20))
+    local row1, row2 = chipRow(gcard, 34), chipRow(gcard, 60)
+    local setPlayers = chip(row1, 1, "- / -")
+    local setPing = chip(row1, 2, "- ms")
+    local setTime = chip(row1, 3, "0m")
+    chip(row2, 1, "Job " .. (game.JobId ~= "" and game.JobId:sub(1, 8) or "-"))
+
+    newLabel(perf, "PERFORMANCE", 10, true, C.TextDim, UDim2.fromOffset(0, 10), UDim2.new(1, 0, 0, 12)).TextXAlignment = Enum.TextXAlignment.Center
+    local ring, setRing = makeRing(perf, 108, 8)
+    ring.AnchorPoint = Vector2.new(0.5, 0)
+    ring.Position = UDim2.new(0.5, 0, 0, 28)
+    local fpsLbl = newLabel(ring, "0", 30, true, C.Text, UDim2.new(0, 0, 0.5, -24), UDim2.new(1, 0, 0, 34))
+    fpsLbl.TextXAlignment = Enum.TextXAlignment.Center
+    local fpsSub = newLabel(ring, "frames per second", 10, false, C.TextDim, UDim2.new(0, 0, 0.5, 10), UDim2.new(1, 0, 0, 14))
+    fpsSub.TextXAlignment = Enum.TextXAlignment.Center
+    local pingLbl = newLabel(perf, "- ms", 12, true, C.TextDim, UDim2.fromOffset(0, 142), UDim2.new(1, 0, 0, 16))
+    pingLbl.TextXAlignment = Enum.TextXAlignment.Center
 
     task.spawn(function()
-        local ok, region = pcall(function() return LocalizationService:GetCountryRegionForPlayerAsync(player) end)
-        setRegion((ok and region and region ~= "") and region or "-")
+        local ok, url = pcall(function()
+            return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+        end)
+        if ok and url and av.Parent then av.Image = url end
     end)
 
-    local execName
-    if typeof(identifyexecutor) == "function" then
-        local ok, name, ver = pcall(identifyexecutor)
-        if ok and name then execName = tostring(name) .. ((ver and tostring(ver) ~= "") and (" " .. tostring(ver)) or "") end
-    end
-    local canFiles = typeof(writefile) == "function" and typeof(readfile) == "function"
-    local canClip = typeof(setclipboard) == "function" or typeof(toclipboard) == "function"
-    local execTint = execName and C.On or Color3.fromRGB(255, 204, 0)
-    local _, execBox = newCard(1, execTint, 0.78, nil, colRight)
-    stackLayout(execBox)
-    newHeading(execBox, "Executor", execName or "Executor tidak terdeteksi", 1)
-    newLabel(execBox, "Save config: " .. (canFiles and "OK" or "tidak ada"),
-        12, false, C.TextDim, UDim2.new(), UDim2.new(1, 0, 0, 16)).LayoutOrder = 2
-    newLabel(execBox, "Clipboard: " .. (canClip and "OK" or "tidak ada"),
-        12, false, C.TextDim, UDim2.new(), UDim2.new(1, 0, 0, 16)).LayoutOrder = 3
-
-    local _, friendsBox = newCard(2, C.Accent, 0.82, nil, colRight)
-    stackLayout(friendsBox)
-    newHeading(friendsBox, "Friends", "Find out what your friends are currently doing", 1)
-    local friendsGrid = newGrid(friendsBox, 2)
-    local setInServer = newTile(friendsGrid, 1, "In Server", "-")
-    local setOffline = newTile(friendsGrid, 2, "Offline", "-")
-    local setOnline = newTile(friendsGrid, 3, "Online", "-")
-    local setAll = newTile(friendsGrid, 4, "All", "-")
-
-    local discord, discordBox = newCard(2, C.Accent, 0.35, 70, colLeft)
-    newLabel(discordBox, "Discord", 18, true, C.Text, UDim2.fromOffset(0, 2), UDim2.new(1, 0, 0, 24))
-    newLabel(discordBox, HOME_DISCORD_INVITE ~= "" and "Tap to join the Discord Server" or "Invite belum diisi (HOME_DISCORD_INVITE)",
-        12, false, C.Text, UDim2.fromOffset(0, 28), UDim2.new(1, 0, 0, 18))
-    local discordBtn = Instance.new("TextButton", discord)
-    discordBtn.Size = UDim2.fromScale(1, 1)
-    discordBtn.BackgroundTransparency = 1
-    discordBtn.Text = ""
-    discordBtn.ZIndex = 3
-    discordBtn.MouseButton1Click:Connect(function()
+    local banner = card(body, 3, 64)
+    local tint = Instance.new("Frame", banner)
+    tint.Size = UDim2.fromScale(1, 1)
+    tint.BackgroundColor3 = C.Accent
+    tint.BorderSizePixel = 0
+    Instance.new("UICorner", tint).CornerRadius = UDim.new(0, 14)
+    local tg = Instance.new("UIGradient", tint)
+    tg.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.78),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    local dBox = Instance.new("Frame", banner)
+    dBox.Position = UDim2.fromOffset(12, 12)
+    dBox.Size = UDim2.fromOffset(40, 40)
+    dBox.BackgroundColor3 = C.Accent
+    dBox.BorderSizePixel = 0
+    Instance.new("UICorner", dBox).CornerRadius = UDim.new(0, 12)
+    icon(dBox, "message-circle", "D", 20, C.Bg, UDim2.fromOffset(10, 10))
+    newLabel(banner, "Join the BZ Discord", 14, true, C.Text, UDim2.fromOffset(62, 12), UDim2.new(1, -186, 0, 18))
+    newLabel(banner, "updates first, new games, bug reports and requests", 11, false, C.TextDim,
+        UDim2.fromOffset(62, 32), UDim2.new(1, -186, 0, 16))
+    local copyBtn = Instance.new("TextButton", banner)
+    copyBtn.AnchorPoint = Vector2.new(1, 0.5)
+    copyBtn.Position = UDim2.new(1, -12, 0.5, 0)
+    copyBtn.Size = UDim2.fromOffset(104, 32)
+    copyBtn.AutoButtonColor = false
+    copyBtn.BackgroundColor3 = C.Accent
+    copyBtn.BorderSizePixel = 0
+    copyBtn.Text = "Copy invite"
+    copyBtn.Font = FontBold
+    copyBtn.TextSize = 12
+    copyBtn.TextColor3 = C.Bg
+    Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 10)
+    copyBtn.MouseButton1Click:Connect(function()
         if HOME_DISCORD_INVITE == "" then
             API:Warn("Discord", "Isi HOME_DISCORD_INVITE di kode menu dulu", 3)
-        elseif homeCopy(HOME_DISCORD_INVITE) then
+        elseif API._clip(HOME_DISCORD_INVITE) then
             API:Success("Tersalin", HOME_DISCORD_INVITE, 3)
         else
             API:Error("Gagal menyalin", "Executor tidak support clipboard", 3)
         end
     end)
 
-    local friendCache = {}
-    local function isFriend(p)
-        local cached = friendCache[p.UserId]
-        if cached ~= nil then return cached end
-        local ok, res = pcall(function() return player:IsFriendsWith(p.UserId) end)
-        if not ok then return false end
-        friendCache[p.UserId] = res and true or false
-        return friendCache[p.UserId]
+    local actions = Instance.new("Frame", body)
+    actions.Name = "HomeActions"
+    actions.LayoutOrder = 4
+    actions.BackgroundTransparency = 1
+    actions.Size = UDim2.new(1, 0, 0, 68)
+    local grid = Instance.new("UIGridLayout", actions)
+    grid.CellSize = UDim2.new(1 / 3, -6, 0, 68)
+    grid.CellPadding = UDim2.fromOffset(8, 8)
+    grid.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local function action(order, iconName, glyph, titleText, subText, onClick)
+        local b = Instance.new("TextButton", actions)
+        b.LayoutOrder = order
+        b.AutoButtonColor = false
+        b.Text = ""
+        b.BackgroundColor3 = C.Surface
+        b.BorderSizePixel = 0
+        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 14)
+        local s = Instance.new("UIStroke", b)
+        s.Color = C.Stroke
+        s.Thickness = 1
+        s.Transparency = 0.6
+        icon(b, iconName, glyph, 16, C.TextDim, UDim2.fromOffset(12, 10))
+        newLabel(b, titleText, 13, true, C.Text, UDim2.fromOffset(12, 30), UDim2.new(1, -24, 0, 16))
+        newLabel(b, subText, 11, false, C.TextDim, UDim2.fromOffset(12, 46), UDim2.new(1, -24, 0, 14))
+        b.MouseEnter:Connect(function()
+            TweenService:Create(b, TweenInfo.new(0.12), {BackgroundColor3 = C.Surface2}):Play()
+        end)
+        b.MouseLeave:Connect(function()
+            TweenService:Create(b, TweenInfo.new(0.12), {BackgroundColor3 = C.Surface}):Play()
+        end)
+        b.MouseButton1Click:Connect(onClick)
     end
 
-    local function refreshServer()
-        local n = #Players:GetPlayers()
-        setPlayers(n .. " playing")
-        setMax(Players.MaxPlayers .. " players")
-        local ok, ping = pcall(function()
+    local busy = false
+    local function guard(fn)
+        return function()
+            if busy then return end
+            busy = true
+            task.delay(3, function() busy = false end)
+            fn()
+        end
+    end
+
+    action(1, "rotate-cw", "↻", "Rejoin", "same server", guard(function()
+        local ok, err = pcall(function()
+            if game.JobId ~= "" then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+            else
+                TeleportService:Teleport(game.PlaceId, player)
+            end
+        end)
+        if not ok then API:Error("Rejoin gagal", tostring(err), 4) end
+    end))
+
+    action(2, "shuffle", "⇄", "Server Hop", "find a fresh one", guard(function()
+        API:Info("Server Hop", "Mencari server lain...", 2)
+        task.spawn(function()
+            local ok, err = pcall(function()
+                local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(game.PlaceId)
+                local data = HttpService:JSONDecode(game:HttpGet(url))
+                local pick
+                for _, s in ipairs(data.data or {}) do
+                    if s.id ~= game.JobId and s.playing and s.maxPlayers and s.playing < s.maxPlayers then
+                        pick = s.id
+                        break
+                    end
+                end
+                if not pick then error("tidak ada server lain yang tersedia") end
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, pick, player)
+            end)
+            if not ok then API:Error("Server Hop gagal", tostring(err), 4) end
+        end)
+    end))
+
+    action(3, "copy", "⧉", "Copy Job ID", "share this server", function()
+        if game.JobId == "" then
+            API:Warn("Job ID", "Job ID kosong (Studio / server privat)", 3)
+        elseif API._clip(game.JobId) then
+            API:Success("Tersalin", "Job ID", 2)
+        else
+            API:Error("Gagal menyalin", "Executor tidak support clipboard", 3)
+        end
+    end)
+
+    local activeBox = Instance.new("Frame", body)
+    activeBox.Name = "HomeActive"
+    activeBox.LayoutOrder = 5
+    activeBox.BackgroundTransparency = 1
+    activeBox.Size = UDim2.new(1, 0, 0, 52)
+    newLabel(activeBox, "ACTIVE NOW", 10, true, C.TextDim, UDim2.fromOffset(0, 0), UDim2.new(0.4, 0, 0, 14))
+    local hintLbl = newLabel(activeBox, "tap a chip to turn it off", 10, false, C.TextDim,
+        UDim2.new(0.4, 0, 0, 0), UDim2.new(0.6, 0, 0, 14))
+    hintLbl.TextXAlignment = Enum.TextXAlignment.Right
+
+    local scroll = Instance.new("ScrollingFrame", activeBox)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel = 0
+    scroll.Position = UDim2.fromOffset(0, 20)
+    scroll.Size = UDim2.new(1, 0, 0, 30)
+    scroll.ScrollBarThickness = 0
+    scroll.CanvasSize = UDim2.new()
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.X
+    scroll.ScrollingDirection = Enum.ScrollingDirection.X
+    local chipLay = Instance.new("UIListLayout", scroll)
+    chipLay.FillDirection = Enum.FillDirection.Horizontal
+    chipLay.Padding = UDim.new(0, 6)
+    chipLay.SortOrder = Enum.SortOrder.LayoutOrder
+    chipLay.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    local INTERNAL = { "home", "ui", "setting", "devtools", "console" }
+    local function isInternal(e)
+        for _, cn in ipairs(INTERNAL) do
+            local c = categories[cn]
+            if c and e.row and e.row:IsDescendantOf(c.body) then return true end
+        end
+        return false
+    end
+
+    local shown = nil
+    local function rebuildChips()
+        local list = {}
+        for name, e in pairs(registry) do
+            if e.kind == "toggle" and e.label and e.get and e.get() and not isInternal(e) then
+                list[#list + 1] = { name = name, text = tostring(e.label) }
+            end
+        end
+        table.sort(list, function(a, b) return a.text < b.text end)
+        local names = {}
+        for i, it in ipairs(list) do names[i] = it.name end
+        local key = table.concat(names, "|")
+        if key == shown then return end
+        shown = key
+
+        for _, c in ipairs(scroll:GetChildren()) do
+            if c:IsA("GuiObject") then c:Destroy() end
+        end
+        if #list == 0 then
+            local em = Instance.new("TextLabel", scroll)
+            em.Name = "Empty"
+            em.BackgroundTransparency = 1
+            em.Size = UDim2.new(0, 0, 1, 0)
+            em.AutomaticSize = Enum.AutomaticSize.X
+            em.Text = "no active features"
+            em.Font = Font
+            em.TextSize = 12
+            em.TextColor3 = C.TextDim
+            return
+        end
+        for i, it in ipairs(list) do
+            local b = Instance.new("TextButton", scroll)
+            b.Name = "Chip_" .. it.name
+            b.LayoutOrder = i
+            b.AutoButtonColor = false
+            b.Text = ""
+            b.BackgroundColor3 = C.Surface2
+            b.BorderSizePixel = 0
+            b.Size = UDim2.new(0, 0, 0, 28)
+            b.AutomaticSize = Enum.AutomaticSize.X
+            Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
+            local st = Instance.new("UIStroke", b)
+            st.Color = C.Accent
+            st.Thickness = 1
+            st.Transparency = 0.5
+            local pad = Instance.new("UIPadding", b)
+            pad.PaddingLeft = UDim.new(0, 10)
+            pad.PaddingRight = UDim.new(0, 10)
+            local lay = Instance.new("UIListLayout", b)
+            lay.FillDirection = Enum.FillDirection.Horizontal
+            lay.Padding = UDim.new(0, 6)
+            lay.SortOrder = Enum.SortOrder.LayoutOrder
+            lay.VerticalAlignment = Enum.VerticalAlignment.Center
+            local dot = Instance.new("Frame", b)
+            dot.LayoutOrder = 1
+            dot.Size = UDim2.fromOffset(6, 6)
+            dot.BackgroundColor3 = C.Accent
+            dot.BorderSizePixel = 0
+            Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+            local l = Instance.new("TextLabel", b)
+            l.LayoutOrder = 2
+            l.BackgroundTransparency = 1
+            l.Size = UDim2.new(0, 0, 1, 0)
+            l.AutomaticSize = Enum.AutomaticSize.X
+            l.Text = it.text
+            l.Font = FontBold
+            l.TextSize = 12
+            l.TextColor3 = C.Text
+            b.MouseButton1Click:Connect(function()
+                pcall(function() API:SetToggle(it.name, false) end)
+                shown = nil
+                pcall(rebuildChips)
+            end)
+        end
+    end
+
+    local function refreshInfo()
+        setPlayers(#Players:GetPlayers() .. " / " .. Players.MaxPlayers)
+        local okp, ping = pcall(function()
             return math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5)
         end)
-        setPing(ok and (ping .. "ms") or "-")
-        local t = math.floor(os.clock() - joinedAt)
-        setTime(string.format("%02d:%02d:%02d", math.floor(t / 3600), math.floor(t / 60) % 60, t % 60))
-
-        local friends = 0
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= player and isFriend(p) then friends = friends + 1 end
-        end
-        setInServer(friends == 0 and "no friends" or (friends .. (friends == 1 and " friend" or " friends")))
-    end
-
-    local function refreshFriends()
-        local okAll, total = pcall(function()
-            local pages = Players:GetFriendsAsync(player.UserId)
-            local n = 0
-            for _ = 1, 40 do
-                n = n + #pages:GetCurrentPage()
-                if pages.IsFinished then break end
-                pages:AdvanceToNextPageAsync()
-            end
-            return n
-        end)
-        local okOn, online = pcall(function() return #player:GetFriendsOnline(200) end)
-        if okAll then setAll(total .. " Friends") else setAll("-") end
-        if okOn then setOnline(online .. " friends") else setOnline("-") end
-        if okAll and okOn then setOffline(math.max(total - online, 0) .. " friends") else setOffline("-") end
+        local pingText = okp and (ping .. " ms") or "- ms"
+        setPing(pingText)
+        pingLbl.Text = pingText
+        local mins = math.floor((os.clock() - joinedAt) / 60)
+        setTime(mins .. "m")
+        wSub.Text = gameName .. " · " .. mins .. "m on this server"
     end
 
     task.spawn(function()
-        refreshServer()
-        refreshFriends()
-        local lastFriends = os.clock()
+        local ok, info = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end)
+        if ok and info and info.Name and info.Name ~= "" then gameName = info.Name end
+        if gName.Parent then gName.Text = gameName end
+        pcall(refreshInfo)
+    end)
+
+    local frames, acc = 0, 0
+    API._connect(RunService.RenderStepped, function(dt)
+        frames = frames + 1
+        acc = acc + dt
+    end)
+
+    pcall(refreshInfo)
+    pcall(rebuildChips)
+
+    task.spawn(function()
+        local n = 0
         while screenGui.Parent do
-            task.wait(5)
+            task.wait(0.5)
+            n = n + 1
+            local fps = acc > 0 and math.floor(frames / acc + 0.5) or 0
+            frames, acc = 0, 0
             local cat = categories["home"]
             if isOpen and cat and cat.body.Visible then
-                pcall(refreshServer)
-                if os.clock() - lastFriends >= 30 then
-                    lastFriends = os.clock()
-                    pcall(refreshFriends)
+                pcall(function()
+                    fpsLbl.Text = tostring(fps)
+                    setRing(fps / FPS_FULL)
+                end)
+                if n % 2 == 0 then
+                    pcall(refreshInfo)
+                    pcall(rebuildChips)
+                    if API._layoutBox then pcall(API._layoutBox) end
                 end
             end
         end
@@ -6456,5 +6840,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v4.9 module ready")
+print("[BZ] Menu UI v5.0 module ready")
 return API
