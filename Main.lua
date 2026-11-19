@@ -5569,7 +5569,7 @@ local function buildHomeCategory()
     task.spawn(function()
         local n = 0
         while screenGui.Parent do
-            task.wait(0.5)
+            task.wait(5)
             n = n + 1
             local fps = acc > 0 and math.floor(frames / acc + 0.5) or 0
             frames, acc = 0, 0
