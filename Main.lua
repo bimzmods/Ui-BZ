@@ -284,7 +284,7 @@ versionLabel = Instance.new("TextLabel", versionPill)
 versionLabel.Size = UDim2.new(0, 0, 1, 0)
 versionLabel.AutomaticSize = Enum.AutomaticSize.X
 versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "v5.0"
+versionLabel.Text = "v5.1"
 versionLabel.Font = FontBold
 versionLabel.TextSize = 10
 versionLabel.TextColor3 = C.TextDim
@@ -1400,44 +1400,175 @@ function COLS.add(cat, inst)
     COLS.schedule(cols)
 end
 
-function COLS.newCard(cat, text)
+function COLS.flatten(row)
+    if not row or not row.Parent or not row:IsA("Frame") then return end
+    local kind = row.Parent:GetAttribute("SearchKind")
+    if kind ~= "card" and kind ~= "group" then return end
+    if not row.Name:find("_Row$") then return end
+    local stroke = row:FindFirstChildOfClass("UIStroke")
+    if row:GetAttribute("KeepBox") then
+        row.BackgroundTransparency = 0
+        if stroke then stroke.Transparency = 0.6 end
+        return
+    end
+    local rk = row:GetAttribute("RowKind")
+    if rk == "tap" then
+        row.BackgroundColor3 = C.Surface2
+        row.BackgroundTransparency = 0
+        if stroke then stroke.Transparency = 0.5 end
+        for _, d in ipairs(row:GetChildren()) do
+            if d:IsA("TextLabel") then
+                d.Font = FontBold
+                d.TextSize = 14
+                d.Position = UDim2.fromOffset(0, 0)
+                d.Size = UDim2.fromScale(1, 1)
+                d.TextXAlignment = Enum.TextXAlignment.Center
+            elseif d.Name == "MouseIcon" then
+                d.Visible = false
+            end
+        end
+        return
+    end
+    row.BackgroundTransparency = 1
+    if stroke then stroke.Transparency = 1 end
+    for _, d in ipairs(row:GetChildren()) do
+        if d:IsA("TextLabel") and d.Position.X.Offset == 14 then
+            d.Font = FontBold
+            d.TextSize = 15
+        elseif rk == "slider" and d:IsA("TextBox") then
+            d.BackgroundTransparency = 1
+            d.Font = FontBold
+            d.TextSize = 15
+            d.TextXAlignment = Enum.TextXAlignment.Right
+        end
+    end
+end
+
+function COLS.watch(container)
+    container.ChildAdded:Connect(function(ch)
+        task.defer(COLS.flatten, ch)
+    end)
+end
+
+function COLS.newCard(cat, text, desc, toggle)
     local card = Instance.new("Frame")
     card.Name = "Card"
     card:SetAttribute("SearchKind", "card")
     card.Size = UDim2.new(1, 0, 0, 0)
     card.AutomaticSize = Enum.AutomaticSize.Y
     card.BackgroundColor3 = C.Surface
-    card.BackgroundTransparency = 0.5
+    card.BackgroundTransparency = 0
     card.BorderSizePixel = 0
-    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 14)
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 16)
     local st = Instance.new("UIStroke", card)
     st.Color = C.Stroke
     st.Thickness = 1
-    st.Transparency = 0.5
+    st.Transparency = 0.4
     local pad = Instance.new("UIPadding", card)
-    pad.PaddingTop = UDim.new(0, 10)
-    pad.PaddingBottom = UDim.new(0, 10)
+    pad.PaddingTop = UDim.new(0, 12)
+    pad.PaddingBottom = UDim.new(0, 12)
     pad.PaddingLeft = UDim.new(0, 10)
     pad.PaddingRight = UDim.new(0, 10)
     local lay = Instance.new("UIListLayout", card)
     lay.SortOrder = Enum.SortOrder.LayoutOrder
     lay.Padding = UDim.new(0, 8)
+    COLS.watch(card)
 
     local lbl
     if text and text ~= "" then
-        lbl = Instance.new("TextLabel", card)
+        local hasDesc = desc ~= nil and tostring(desc) ~= ""
+        local head = Instance.new("Frame", card)
+        head.Name = "CardHeader"
+        head.LayoutOrder = 0
+        head.Size = UDim2.new(1, 0, 0, hasDesc and 44 or 30)
+        head.BackgroundTransparency = 1
+        head.BorderSizePixel = 0
+
+        lbl = Instance.new("TextLabel", head)
         lbl.Name = "CardTitle"
-        lbl.LayoutOrder = 0
-        lbl.Size = UDim2.new(1, 0, 0, 22)
+        lbl.Position = UDim2.fromOffset(14, 0)
+        lbl.Size = hasDesc and UDim2.new(1, -76, 0, 24) or UDim2.new(1, -76, 1, 0)
         lbl.BackgroundTransparency = 1
         lbl.Text = text
         lbl.Font = FontBold
-        lbl.TextSize = 15
+        lbl.TextSize = 17
         lbl.TextColor3 = C.Text
         lbl.TextXAlignment = Enum.TextXAlignment.Left
         lbl.TextYAlignment = Enum.TextYAlignment.Center
         lbl.TextTruncate = Enum.TextTruncate.AtEnd
-        Instance.new("UIPadding", lbl).PaddingLeft = UDim.new(0, 4)
+
+        if hasDesc then
+            local dl = Instance.new("TextLabel", head)
+            dl.Name = "CardDesc"
+            dl.Position = UDim2.fromOffset(14, 24)
+            dl.Size = UDim2.new(1, -76, 0, 16)
+            dl.BackgroundTransparency = 1
+            dl.Text = tostring(desc)
+            dl.Font = Font
+            dl.TextSize = 13
+            dl.TextColor3 = C.TextDim
+            dl.TextXAlignment = Enum.TextXAlignment.Left
+            dl.TextTruncate = Enum.TextTruncate.AtEnd
+        end
+
+        if toggle then
+            local track = Instance.new("TextButton", head)
+            track.Name = "CardSwitch"
+            track.AnchorPoint = Vector2.new(1, 0.5)
+            track.Position = UDim2.new(1, -12, 0.5, 0)
+            track.Size = UDim2.fromOffset(44, 24)
+            track.AutoButtonColor = false
+            track.Text = ""
+            track.BackgroundColor3 = C.Off
+            track.BorderSizePixel = 0
+            Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+            local knob = Instance.new("Frame", track)
+            knob.AnchorPoint = Vector2.new(0, 0.5)
+            knob.Position = UDim2.new(0, 3, 0.5, 0)
+            knob.Size = UDim2.fromOffset(18, 18)
+            knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            knob.BorderSizePixel = 0
+            Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+            local state = toggle.default and true or false
+            local function paint(animate)
+                local tProps = {BackgroundColor3 = state and C.On or C.Off}
+                local kProps = {Position = state and UDim2.new(0, 23, 0.5, 0) or UDim2.new(0, 3, 0.5, 0)}
+                if animate then
+                    local info = TweenInfo.new(0.18, Enum.EasingStyle.Quart)
+                    TweenService:Create(track, info, tProps):Play()
+                    TweenService:Create(knob, info, kProps):Play()
+                else
+                    track.BackgroundColor3 = tProps.BackgroundColor3
+                    knob.Position = kProps.Position
+                end
+            end
+            paint(false)
+            local function setState(v, silent)
+                state = v and true or false
+                paint(true)
+                if not silent and toggle.callback then pcall(toggle.callback, state) end
+            end
+            track.MouseButton1Click:Connect(function() setState(not state) end)
+            registry[toggle.name] = {
+                kind = "toggle",
+                set = setState,
+                get = function() return state end,
+                row = head,
+                label = text,
+                setStyle = function() end,
+            }
+            if toggle.default and toggle.callback then pcall(toggle.callback, true) end
+            applyPending(toggle.name)
+        end
+
+        local div = Instance.new("Frame", card)
+        div.Name = "CardDivider"
+        div.LayoutOrder = 0
+        div.Size = UDim2.new(1, 0, 0, 1)
+        div.BackgroundColor3 = C.Stroke
+        div.BackgroundTransparency = 0.5
+        div.BorderSizePixel = 0
     end
     COLS.add(cat, card)
     return card, lbl
@@ -1467,7 +1598,7 @@ local function currentBody()
     return cat.flat
 end
 
-function API:AddSection(text)
+function API:AddSection(text, desc)
     baseBody()
     local cat = categories[currentCat]
     if cat.group then
@@ -1484,9 +1615,23 @@ function API:AddSection(text)
         Instance.new("UIPadding", lbl).PaddingLeft = UDim.new(0, 6)
         return lbl
     end
-    local card, lbl = COLS.newCard(cat, text)
+    local card, lbl = COLS.newCard(cat, text, desc)
     cat.card = card
     return lbl or card
+end
+
+function API:AddCard(name, title, desc, default, callback)
+    baseBody()
+    local cat = categories[currentCat]
+    local hasToggle = default ~= nil or callback ~= nil
+    if cat.group then
+        if hasToggle then return API:AddToggle(name, title, default, callback) end
+        return API:AddSection(title)
+    end
+    local card = COLS.newCard(cat, title, desc, hasToggle and { name = name, default = default, callback = callback } or nil)
+    cat.card = card
+    if hasToggle then return registry[name] end
+    return card
 end
 
 do
@@ -1623,8 +1768,8 @@ do
                     local owner, titleHit = nil, false
                     if kind == "card" then
                         owner = d
-                        local t = d:FindFirstChild("CardTitle")
-                        titleHit = q ~= "" and t ~= nil and hit(t.Text:lower(), q)
+                        local t = d:FindFirstChild("CardTitle") or d:FindFirstChild("CardHeader")
+                        titleHit = q ~= "" and t ~= nil and hit(rowText(t), q)
                     elseif kind == "group" then
                         owner = d.Parent and d.Parent.Parent
                         local head = owner and owner:FindFirstChild("Head")
@@ -1632,7 +1777,7 @@ do
                     end
                     local any = false
                     for _, row in ipairs(d:GetChildren()) do
-                        if row:IsA("GuiObject") and row.Name ~= "CardTitle" then
+                        if row:IsA("GuiObject") and row.Name ~= "CardTitle" and row.Name ~= "CardHeader" and row.Name ~= "CardDivider" then
                             local show = q == "" or titleHit or hit(rowText(row), q)
                             if show then
                                 if row:GetAttribute("SrchHide") then
@@ -1778,12 +1923,12 @@ function API:AddGroup(name, labelText, icon, startOpen)
     holder.BorderSizePixel = 0
     holder:SetAttribute("IsGroup", true)
     holder.BackgroundColor3 = C.Surface
-    holder.BackgroundTransparency = 0.5
-    Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 14)
+    holder.BackgroundTransparency = 0
+    Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 16)
     local holderStroke = Instance.new("UIStroke", holder)
     holderStroke.Color = C.Stroke
     holderStroke.Thickness = 1
-    holderStroke.Transparency = 0.5
+    holderStroke.Transparency = 0.4
     local holderPad = Instance.new("UIPadding", holder)
     holderPad.PaddingTop = UDim.new(0, 10)
     holderPad.PaddingBottom = UDim.new(0, 10)
@@ -1799,14 +1944,15 @@ function API:AddGroup(name, labelText, icon, startOpen)
     head.Name = "Head"
     head.LayoutOrder = 1
     head.Size = UDim2.new(1, 0, 0, 44)
-    head.BackgroundColor3 = C.Surface
+    head.BackgroundColor3 = C.Surface2
+    head.BackgroundTransparency = 1
     head.AutoButtonColor = false
     head.Text = ""
     Instance.new("UICorner", head).CornerRadius = UDim.new(0, 12)
     local hs = Instance.new("UIStroke", head)
     hs.Color = C.Stroke
     hs.Thickness = 1
-    hs.Transparency = 0.2
+    hs.Transparency = 1
 
     local textX = 14
     local iconInst, iconProp
@@ -1841,7 +1987,7 @@ function API:AddGroup(name, labelText, icon, startOpen)
     lbl.BackgroundTransparency = 1
     lbl.Text = labelText or name
     lbl.Font = FontBold
-    lbl.TextSize = 14
+    lbl.TextSize = 16
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.TextTruncate = Enum.TextTruncate.AtEnd
@@ -1867,9 +2013,18 @@ function API:AddGroup(name, labelText, icon, startOpen)
     chev.BackgroundTransparency = 1
     chev.Rotation = open and 90 or 0
 
+    local div = Instance.new("Frame", holder)
+    div.Name = "GroupDivider"
+    div.LayoutOrder = 2
+    div.Size = UDim2.new(1, 0, 0, 1)
+    div.BackgroundColor3 = C.Stroke
+    div.BackgroundTransparency = 0.5
+    div.BorderSizePixel = 0
+    div.Visible = open
+
     local clip = Instance.new("Frame", holder)
     clip.Name = "Clip"
-    clip.LayoutOrder = 2
+    clip.LayoutOrder = 3
     clip.BackgroundTransparency = 1
     clip.BorderSizePixel = 0
     clip.ClipsDescendants = true
@@ -1892,6 +2047,7 @@ function API:AddGroup(name, labelText, icon, startOpen)
     local cp = Instance.new("UIPadding", content)
     cp.PaddingLeft = UDim.new(0, 0)
     content:SetAttribute("SearchKind", "group")
+    COLS.watch(content)
 
     local ANIM = TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     local FAST = TweenInfo.new(0.15, Enum.EasingStyle.Quart)
@@ -1902,12 +2058,8 @@ function API:AddGroup(name, labelText, icon, startOpen)
         local fg = open and C.Accent or C.TextDim
         TweenService:Create(chev, FAST, {[chevProp] = fg}):Play()
         if iconInst then TweenService:Create(iconInst, FAST, {[iconProp] = fg}):Play() end
-        TweenService:Create(hs, FAST, {
-            Color = open and C.Accent or C.Stroke,
-            Transparency = open and 0.35 or 0.2,
-        }):Play()
         TweenService:Create(head, FAST, {
-            BackgroundColor3 = (hovering and not open) and C.Surface2 or C.Surface,
+            BackgroundTransparency = (hovering and not open) and 0.7 or 1,
         }):Play()
     end
 
@@ -1915,6 +2067,7 @@ function API:AddGroup(name, labelText, icon, startOpen)
         v = v and true or false
         if v == open and not instant then return end
         open = v
+        div.Visible = open
         token = token + 1
         local my = token
 
@@ -1963,8 +2116,6 @@ function API:AddGroup(name, labelText, icon, startOpen)
     head.MouseEnter:Connect(function() hovering = true; paintHead() end)
     head.MouseLeave:Connect(function() hovering = false; paintHead() end)
     if open then
-        hs.Color = C.Accent
-        hs.Transparency = 0.35
         chev[chevProp] = C.Accent
         if iconInst then iconInst[iconProp] = C.Accent end
     end
@@ -2164,6 +2315,8 @@ function API:AddToggle(name, labelText, default, callback, style)
         lbl.Size = (st == "button") and UDim2.new(1, -28, 1, 0) or UDim2.new(1, -80, 1, 0)
         update = builders[st]()
         update(state, false)
+        row:SetAttribute("KeepBox", st == "button")
+        COLS.flatten(row)
     end
 
     local function setState(v, silent)
@@ -2245,6 +2398,7 @@ function API:AddTapToggleOneClick(name, labelText, callback)
     row.BackgroundColor3 = C.Surface
     row.BorderSizePixel = 0
     row.LayoutOrder = nextOrder()
+    row:SetAttribute("RowKind", "tap")
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
     local s = Instance.new("UIStroke", row)
     s.Color = C.Stroke
@@ -2420,7 +2574,7 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
     lbl.TextTruncate = Enum.TextTruncate.AtEnd
 
     local pill = Instance.new("TextButton", row)
-    pill.Size = UDim2.fromOffset(PILL_W, 28)
+    pill.Size = UDim2.fromOffset(PILL_W, 30)
     pill.AnchorPoint = Vector2.new(1, 0.5)
     pill.Position = UDim2.new(1, -12, 0.5, 0)
     pill.BackgroundColor3 = C.Surface2
@@ -2428,6 +2582,10 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
     pill.AutoButtonColor = false
     pill.Text = ""
     Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 8)
+    local pillStroke = Instance.new("UIStroke", pill)
+    pillStroke.Color = C.Stroke
+    pillStroke.Thickness = 1
+    pillStroke.Transparency = 0.5
 
     local valLbl = Instance.new("TextLabel", pill)
     valLbl.Size = UDim2.new(1, -26, 1, 0)
@@ -2435,7 +2593,7 @@ function API:AddSelectMenu(name, labelText, options, default, callback)
     valLbl.BackgroundTransparency = 1
     valLbl.Font = FontBold
     valLbl.TextSize = 13
-    valLbl.TextColor3 = C.Accent
+    valLbl.TextColor3 = C.Text
     valLbl.TextXAlignment = Enum.TextXAlignment.Left
     valLbl.TextTruncate = Enum.TextTruncate.AtEnd
 
@@ -2964,7 +3122,7 @@ function API:AddKeyBindInput(name, labelText, default, callback, onChange)
     lbl.TextTruncate = Enum.TextTruncate.AtEnd
 
     local pill = Instance.new("TextButton", row)
-    pill.Size = UDim2.fromOffset(PILL_W, 28)
+    pill.Size = UDim2.fromOffset(PILL_W, 30)
     pill.AnchorPoint = Vector2.new(1, 0.5)
     pill.Position = UDim2.new(1, -12, 0.5, 0)
     pill.BackgroundColor3 = C.Surface2
@@ -2974,6 +3132,21 @@ function API:AddKeyBindInput(name, labelText, default, callback, onChange)
     pill.TextSize = 13
     pill.Text = ""
     Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 8)
+    local pillStroke = Instance.new("UIStroke", pill)
+    pillStroke.Color = C.Stroke
+    pillStroke.Thickness = 1
+    pillStroke.Transparency = 0.5
+    local kk, kv = resolveIcon("keyboard")
+    if kk == "image" then
+        local ki = Instance.new("ImageLabel", pill)
+        ki.AnchorPoint = Vector2.new(0, 0.5)
+        ki.Position = UDim2.new(0, 10, 0.5, 0)
+        ki.Size = UDim2.fromOffset(14, 14)
+        ki.BackgroundTransparency = 1
+        ki.Image = kv
+        ki.ImageColor3 = C.TextDim
+        Instance.new("UIPadding", pill).PaddingLeft = UDim.new(0, 22)
+    end
 
     local entry = { key = normalizeKeyName(default), callback = callback }
     keybinds[name] = entry
@@ -2986,7 +3159,7 @@ function API:AddKeyBindInput(name, labelText, default, callback, onChange)
             pill.TextColor3 = C.TextDim
         elseif entry.key then
             pill.Text = prettyKey(entry.key)
-            pill.TextColor3 = C.Accent
+            pill.TextColor3 = C.Text
         else
             pill.Text = "Tidak ada"
             pill.TextColor3 = C.TextDim
@@ -3695,6 +3868,7 @@ function API:AddSlider(name, labelText, min, max, default, callback, step)
     local row = Instance.new("Frame", parentBody)
     row.Name = name .. "_Row"
     row.Size = UDim2.new(1, 0, 0, 62)
+    row:SetAttribute("RowKind", "slider")
     row.BackgroundColor3 = C.Surface
     row.BorderSizePixel = 0
     row.LayoutOrder = nextOrder()
@@ -4856,8 +5030,8 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v5.0"
-local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown", Version = "v5.0" }
+local BZ_VERSION = "v5.1"
+local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown", Version = "v5.1" }
 local logoSizeValue = 44
 local deskripsiText, versionShow = TEXT_DEFAULTS.Deskripsi, true
 
@@ -5569,7 +5743,7 @@ local function buildHomeCategory()
     task.spawn(function()
         local n = 0
         while screenGui.Parent do
-            task.wait(5)
+            task.wait(0.5)
             n = n + 1
             local fps = acc > 0 and math.floor(frames / acc + 0.5) or 0
             frames, acc = 0, 0
@@ -6840,5 +7014,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v5.0 module ready")
+print("[BZ] Menu UI v5.1 module ready")
 return API
