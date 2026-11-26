@@ -26,7 +26,7 @@ local CFG = {
         Text      = Color3.fromRGB(245, 245, 247),
         TextDim   = Color3.fromRGB(150, 150, 162),
         Stroke    = Color3.fromRGB(66, 64, 80),
-        On        = Color3.fromRGB(48, 209, 88),
+        On        = Color3.fromRGB(191, 90, 242), 
         Off       = Color3.fromRGB(72, 70, 86),
     },
     Font      = Enum.Font.BuilderSans,
@@ -65,7 +65,7 @@ local function palette(t)
         Text = Color3.fromRGB(t[5][1], t[5][2], t[5][3]),
         TextDim = Color3.fromRGB(t[6][1], t[6][2], t[6][3]),
         Stroke = Color3.fromRGB(t[7][1], t[7][2], t[7][3]),
-        On = Color3.fromRGB(t[8][1], t[8][2], t[8][3]),
+        On = Color3.fromRGB(t[4][1], t[4][2], t[4][3]), 
         Off = Color3.fromRGB(t[9][1], t[9][2], t[9][3]),
     }
 end
@@ -284,7 +284,7 @@ versionLabel = Instance.new("TextLabel", versionPill)
 versionLabel.Size = UDim2.new(0, 0, 1, 0)
 versionLabel.AutomaticSize = Enum.AutomaticSize.X
 versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "v5.0"
+versionLabel.Text = "v5.1"
 versionLabel.Font = FontBold
 versionLabel.TextSize = 10
 versionLabel.TextColor3 = C.TextDim
@@ -4856,8 +4856,8 @@ function API:SetLogoImage(url, callback)
     end)
 end
 
-local BZ_VERSION = "v5.0"
-local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown", Version = "v5.0" }
+local BZ_VERSION = "v5.1"
+local TEXT_DEFAULTS = { Title = "BZ Menu", Logo = "BZ", Deskripsi = "Studio The Clown", Version = "v5.1" }
 local logoSizeValue = 44
 local deskripsiText, versionShow = TEXT_DEFAULTS.Deskripsi, true
 
@@ -5592,7 +5592,7 @@ local function buildHomeCategory()
 end
 buildHomeCategory()
 
-local GL = { on = false, alpha = 0.4, map = {}, sheen = nil }
+local GL = { on = false, alpha = 0.5, blur = 18, map = {}, sheen = nil, tint = nil, rim = nil, blurFx = nil }
 
 function GL.glassTarget(inst)
     if not (inst:IsA("Frame") or inst:IsA("TextButton") or inst:IsA("ScrollingFrame")) then return false end
@@ -5627,31 +5627,80 @@ menu.DescendantAdded:Connect(function(d)
     if GL.on then task.defer(GL.glassApply, d) end
 end)
 
+local function glassLayer(name, color, rotation, keys)
+    local f = Instance.new("Frame", menu)
+    f.Name = name
+    f.Size = UDim2.fromScale(1, 1)
+    f.BackgroundColor3 = color
+    f.BorderSizePixel = 0
+    f.Active = false
+    f.ZIndex = 1
+    f:SetAttribute("NoGlass", true)
+    local g = Instance.new("UIGradient", f)
+    g.Rotation = rotation
+    local pts = {}
+    for i, k in ipairs(keys) do pts[i] = NumberSequenceKeypoint.new(k[1], k[2]) end
+    g.Transparency = NumberSequence.new(pts)
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 22)
+    return f
+end
+
+function GL.applyBlur()
+    local ok, Lighting = pcall(game.GetService, game, "Lighting")
+    if not ok or not Lighting then return end
+    if not GL.blurFx or not GL.blurFx.Parent then
+        local fx = Lighting:FindFirstChild("BZ_LiquidGlassBlur") or Instance.new("BlurEffect")
+        fx.Name = "BZ_LiquidGlassBlur"
+        fx.Parent = Lighting
+        GL.blurFx = fx
+    end
+    GL.blurFx.Size = GL.blur
+    GL.blurFx.Enabled = GL.on and GL.blur > 0
+end
+
+screenGui.Destroying:Connect(function()
+    if GL.blurFx then pcall(function() GL.blurFx:Destroy() end) end
+end)
+
 function API:SetGlass(on, alpha)
-    if alpha ~= nil then GL.alpha = math.clamp(tonumber(alpha) or 0.4, 0, 0.9) end
+    if alpha ~= nil then GL.alpha = math.clamp(tonumber(alpha) or 0.5, 0, 0.9) end
     GL.on = on and true or false
     if not GL.sheen then
-        local sh = Instance.new("Frame", menu)
-        sh.Name = "GlassSheen"
-        sh.Size = UDim2.fromScale(1, 1)
-        sh.BackgroundColor3 = Color3.new(1, 1, 1)
-        sh.BorderSizePixel = 0
-        sh.Active = false
-        sh.ZIndex = 1
-        sh:SetAttribute("NoTheme", true)
-        sh:SetAttribute("NoGlass", true)
-        local g = Instance.new("UIGradient", sh)
-        g.Rotation = 125
-        g.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.88),
-            NumberSequenceKeypoint.new(0.45, 0.97),
-            NumberSequenceKeypoint.new(1, 0.93),
+        GL.sheen = glassLayer("GlassSheen", Color3.new(1, 1, 1), 125, {
+            { 0, 0.80 }, { 0.30, 0.93 }, { 0.55, 0.98 }, { 0.85, 0.94 }, { 1, 0.86 },
         })
-        Instance.new("UICorner", sh).CornerRadius = UDim.new(0, 22)
-        GL.sheen = sh
+        GL.sheen:SetAttribute("NoTheme", true)
+        GL.tint = glassLayer("GlassTint", C.Accent, 315, {
+            { 0, 0.94 }, { 0.5, 0.97 }, { 1, 0.86 },
+        })
+        
+        local rim = Instance.new("UIStroke", menu)
+        rim.Name = "GlassRim"
+        rim.Color = Color3.new(1, 1, 1)
+        rim.Thickness = 1.5
+        rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        rim.Transparency = 0
+        local rg = Instance.new("UIGradient", rim)
+        rg.Rotation = 45
+        rg.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.1),
+            NumberSequenceKeypoint.new(0.25, 0.75),
+            NumberSequenceKeypoint.new(0.5, 0.95),
+            NumberSequenceKeypoint.new(0.75, 0.75),
+            NumberSequenceKeypoint.new(1, 0.2),
+        })
+        GL.rim = rim
     end
     GL.sheen.Visible = GL.on
+    GL.tint.Visible = GL.on
+    GL.rim.Enabled = GL.on
+    GL.applyBlur()
     GL.glassRefresh()
+end
+
+function API:SetGlassBlur(v)
+    GL.blur = math.clamp(tonumber(v) or 18, 0, 56)
+    GL.applyBlur()
 end
 
 function API:IsGlass() return GL.on end
@@ -5710,13 +5759,16 @@ local function buildUICategory()
     API:AddSelectMenu("ui_theme", "Thema", THEME_ORDER, "Ungu", function(v)
         API:SetTheme(v)
     end)
-    API:AddToggle("ui_glass", "Mode Glass", false, function(on)
+    API:AddToggle("ui_glass", "Liquid Glass", false, function(on)
         API:SetGlass(on)
     end, "switch")
-    API:AddSlider("ui_glass_alpha", "Glass Transparan (%)", 10, 85, 40, function(v)
+    API:AddSlider("ui_glass_alpha", "Glass Transparan (%)", 10, 85, 50, function(v)
         GL.alpha = v / 100
         if GL.on then GL.glassRefresh() end
     end, 5)
+    API:AddSlider("ui_glass_blur", "Glass Blur", 0, 40, 18, function(v)
+        API:SetGlassBlur(v)
+    end, 2)
 
     API:AddSection("Gaya Toggle")
     API:AddSelectMenu("ui_toggle_style", "Gaya Toggle", { "Switch", "Checkbox", "Radio", "Pill", "Button" }, "Switch", function(v)
@@ -6840,5 +6892,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v5.0 module ready")
+print("[BZ] Menu UI v5.1 module ready")
 return API
