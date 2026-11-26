@@ -26,7 +26,7 @@ local CFG = {
         Text      = Color3.fromRGB(245, 245, 247),
         TextDim   = Color3.fromRGB(150, 150, 162),
         Stroke    = Color3.fromRGB(66, 64, 80),
-        On        = Color3.fromRGB(191, 90, 242), 
+        On        = Color3.fromRGB(191, 90, 242),
         Off       = Color3.fromRGB(72, 70, 86),
     },
     Font      = Enum.Font.BuilderSans,
@@ -65,7 +65,7 @@ local function palette(t)
         Text = Color3.fromRGB(t[5][1], t[5][2], t[5][3]),
         TextDim = Color3.fromRGB(t[6][1], t[6][2], t[6][3]),
         Stroke = Color3.fromRGB(t[7][1], t[7][2], t[7][3]),
-        On = Color3.fromRGB(t[4][1], t[4][2], t[4][3]), 
+        On = Color3.fromRGB(t[4][1], t[4][2], t[4][3]),
         Off = Color3.fromRGB(t[9][1], t[9][2], t[9][3]),
     }
 end
@@ -5592,7 +5592,7 @@ local function buildHomeCategory()
 end
 buildHomeCategory()
 
-local GL = { on = false, alpha = 0.5, blur = 18, map = {}, sheen = nil, tint = nil, rim = nil, blurFx = nil }
+local GL = { on = false, alpha = 0.5, blur = 18, map = {}, edge = {}, sheen = nil, tint = nil, rim = nil, dof = nil, pane = nil, conn = nil, shimmer = nil }
 
 function GL.glassTarget(inst)
     if not (inst:IsA("Frame") or inst:IsA("TextButton") or inst:IsA("ScrollingFrame")) then return false end
@@ -5607,6 +5607,23 @@ function GL.glassApply(inst)
     local orig = inst.BackgroundTransparency
     GL.map[inst] = orig
     inst.BackgroundTransparency = orig + (1 - orig) * GL.alpha
+    if inst ~= menu and not GL.edge[inst] then
+        local st = Instance.new("UIStroke")
+        st.Name = "GlassEdge"
+        st.Color = Color3.new(1, 1, 1)
+        st.Thickness = 1
+        st.Transparency = 0
+        st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        local g = Instance.new("UIGradient", st)
+        g.Rotation = 60
+        g.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.55),
+            NumberSequenceKeypoint.new(0.5, 0.95),
+            NumberSequenceKeypoint.new(1, 0.7),
+        })
+        st.Parent = inst
+        GL.edge[inst] = st
+    end
 end
 
 function GL.glassClear()
@@ -5614,6 +5631,8 @@ function GL.glassClear()
         if inst.Parent then inst.BackgroundTransparency = orig end
     end
     table.clear(GL.map)
+    for _, st in pairs(GL.edge) do pcall(function() st:Destroy() end) end
+    table.clear(GL.edge)
 end
 
 function GL.glassRefresh()
@@ -5645,21 +5664,80 @@ local function glassLayer(name, color, rotation, keys)
     return f
 end
 
-function GL.applyBlur()
-    local ok, Lighting = pcall(game.GetService, game, "Lighting")
-    if not ok or not Lighting then return end
-    if not GL.blurFx or not GL.blurFx.Parent then
-        local fx = Lighting:FindFirstChild("BZ_LiquidGlassBlur") or Instance.new("BlurEffect")
-        fx.Name = "BZ_LiquidGlassBlur"
-        fx.Parent = Lighting
-        GL.blurFx = fx
+local RunService_GL = game:GetService("RunService")
+
+function GL.ensurePane()
+    if GL.pane and GL.pane.Parent then return end
+    local part = Instance.new("Part")
+    part.Name = "BZ_GlassPane"
+    part.Anchored = true
+    part.CanCollide = false
+    part.CanQuery = false
+    part.CanTouch = false
+    part.CastShadow = false
+    part.Material = Enum.Material.Glass
+    part.Transparency = 0.98
+    part.Color = Color3.new(1, 1, 1)
+    part.Size = Vector3.new(0.01, 0.01, 0.01)
+    GL.pane = part
+    if not GL.dof then
+        local Lighting = game:GetService("Lighting")
+        local d = Lighting:FindFirstChild("BZ_GlassDoF") or Instance.new("DepthOfFieldEffect")
+        d.Name = "BZ_GlassDoF"
+        d.FarIntensity = 0
+        d.InFocusRadius = 50
+        d.FocusDistance = 51.6
+        d.Parent = Lighting
+        GL.dof = d
     end
-    GL.blurFx.Size = GL.blur
-    GL.blurFx.Enabled = GL.on and GL.blur > 0
+end
+
+function GL.updatePane()
+    local pane, cam = GL.pane, workspace.CurrentCamera
+    if not (pane and cam) then return end
+    if not (GL.on and GL.blur > 0 and menu.Visible and screenGui.Enabled) then
+        pane.Parent = nil
+        if GL.dof then GL.dof.NearIntensity = 0 end
+        return
+    end
+    local pos, size = menu.AbsolutePosition, menu.AbsoluteSize
+    local inset = 12
+    if size.X <= inset * 2 or size.Y <= inset * 2 then pane.Parent = nil return end
+    local depth = 0.6
+    local look = cam.CFrame.LookVector
+    local function at(px, py)
+        local ray = cam:ViewportPointToRay(px, py)
+        return ray.Origin + ray.Direction * (depth / ray.Direction:Dot(look))
+    end
+    local tl = at(pos.X + inset, pos.Y + inset)
+    local br = at(pos.X + size.X - inset, pos.Y + size.Y - inset)
+    local d = br - tl
+    local right, up = cam.CFrame.RightVector, cam.CFrame.UpVector
+    local w, h = math.abs(d:Dot(right)), math.abs(d:Dot(up))
+    pane.Size = Vector3.new(math.max(w, 0.01), math.max(h, 0.01), 0.01)
+    pane.CFrame = CFrame.fromMatrix((tl + br) / 2, right, up)
+    if pane.Parent ~= cam then pane.Parent = cam end
+    GL.dof.NearIntensity = math.clamp(GL.blur / 40, 0, 1)
+end
+
+function GL.applyBlur()
+    if GL.on and GL.blur > 0 then
+        GL.ensurePane()
+        if not GL.conn then
+            GL.conn = RunService_GL.RenderStepped:Connect(GL.updatePane)
+        end
+    else
+        if GL.conn then GL.conn:Disconnect() GL.conn = nil end
+        if GL.pane then GL.pane.Parent = nil end
+        if GL.dof then GL.dof.NearIntensity = 0 end
+    end
 end
 
 screenGui.Destroying:Connect(function()
-    if GL.blurFx then pcall(function() GL.blurFx:Destroy() end) end
+    if GL.conn then GL.conn:Disconnect() GL.conn = nil end
+    if GL.pane then pcall(function() GL.pane:Destroy() end) end
+    if GL.dof then pcall(function() GL.dof:Destroy() end) end
+    if GL.shimmer then GL.shimmer:Cancel() end
 end)
 
 function API:SetGlass(on, alpha)
@@ -5670,10 +5748,13 @@ function API:SetGlass(on, alpha)
             { 0, 0.80 }, { 0.30, 0.93 }, { 0.55, 0.98 }, { 0.85, 0.94 }, { 1, 0.86 },
         })
         GL.sheen:SetAttribute("NoTheme", true)
+        local sg = GL.sheen:FindFirstChildOfClass("UIGradient")
+        sg.Offset = Vector2.new(-0.35, -0.35)
+        GL.shimmer = TweenService:Create(sg, TweenInfo.new(5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Offset = Vector2.new(0.35, 0.35) })
+        GL.shimmer:Play()
         GL.tint = glassLayer("GlassTint", C.Accent, 315, {
             { 0, 0.94 }, { 0.5, 0.97 }, { 1, 0.86 },
         })
-        
         local rim = Instance.new("UIStroke", menu)
         rim.Name = "GlassRim"
         rim.Color = Color3.new(1, 1, 1)
@@ -6892,5 +6973,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v5.1 module ready")
+print("[BZ] Menu UI v5.1 module ready.")
 return API
