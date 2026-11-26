@@ -5677,6 +5677,7 @@ function GL.ensurePane()
     part.CastShadow = false
     part.Material = Enum.Material.Glass
     part.Transparency = 0.98
+    part.Reflectance = 0
     part.Color = Color3.new(1, 1, 1)
     part.Size = Vector3.new(0.01, 0.01, 0.01)
     GL.pane = part
@@ -5685,8 +5686,9 @@ function GL.ensurePane()
         local d = Lighting:FindFirstChild("BZ_GlassDoF") or Instance.new("DepthOfFieldEffect")
         d.Name = "BZ_GlassDoF"
         d.FarIntensity = 0
-        d.InFocusRadius = 50
-        d.FocusDistance = 51.6
+        d.NearIntensity = 0
+        d.InFocusRadius = 0.1
+        d.FocusDistance = 0
         d.Parent = Lighting
         GL.dof = d
     end
@@ -5703,7 +5705,7 @@ function GL.updatePane()
     local pos, size = menu.AbsolutePosition, menu.AbsoluteSize
     local inset = 12
     if size.X <= inset * 2 or size.Y <= inset * 2 then pane.Parent = nil return end
-    local depth = 0.6
+    local depth = 0.2
     local look = cam.CFrame.LookVector
     local function at(px, py)
         local ray = cam:ViewportPointToRay(px, py)
@@ -5717,12 +5719,32 @@ function GL.updatePane()
     pane.Size = Vector3.new(math.max(w, 0.01), math.max(h, 0.01), 0.01)
     pane.CFrame = CFrame.fromMatrix((tl + br) / 2, right, up)
     if pane.Parent ~= cam then pane.Parent = cam end
-    GL.dof.NearIntensity = math.clamp(GL.blur / 40, 0, 1)
+    GL.dof.NearIntensity = math.clamp(GL.blur / 20, 0, 1)
+end
+
+GL.offDof = {}
+
+function GL.setOtherDof(disable)
+    local Lighting = game:GetService("Lighting")
+    if disable then
+        for _, e in ipairs(Lighting:GetChildren()) do
+            if e:IsA("DepthOfFieldEffect") and e ~= GL.dof and e.Enabled then
+                GL.offDof[e] = true
+                e.Enabled = false
+            end
+        end
+    else
+        for e in pairs(GL.offDof) do
+            if e.Parent then e.Enabled = true end
+        end
+        table.clear(GL.offDof)
+    end
 end
 
 function GL.applyBlur()
     if GL.on and GL.blur > 0 then
         GL.ensurePane()
+        GL.setOtherDof(true)
         if not GL.conn then
             GL.conn = RunService_GL.RenderStepped:Connect(GL.updatePane)
         end
@@ -5730,6 +5752,7 @@ function GL.applyBlur()
         if GL.conn then GL.conn:Disconnect() GL.conn = nil end
         if GL.pane then GL.pane.Parent = nil end
         if GL.dof then GL.dof.NearIntensity = 0 end
+        GL.setOtherDof(false)
     end
 end
 
@@ -5737,6 +5760,7 @@ screenGui.Destroying:Connect(function()
     if GL.conn then GL.conn:Disconnect() GL.conn = nil end
     if GL.pane then pcall(function() GL.pane:Destroy() end) end
     if GL.dof then pcall(function() GL.dof:Destroy() end) end
+    GL.setOtherDof(false)
     if GL.shimmer then GL.shimmer:Cancel() end
 end)
 
@@ -6973,5 +6997,5 @@ setmetatable(API, {
     end,
 })
 
-print("[BZ] Menu UI v5.1 module ready.")
+print("[BZ] Menu UI v5.1 module ready")
 return API
