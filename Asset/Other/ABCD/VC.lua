@@ -14,6 +14,7 @@ local typeof          = typeof
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService        = game:GetService("RunService")
 local LocalPlayer       = Players.LocalPlayer
 
 if not LocalPlayer then
@@ -31,9 +32,6 @@ _G.Players           = Players
 _G.ReplicatedStorage = ReplicatedStorage
 _G.LocalPlayer       = LocalPlayer
 
--- =========================================================
--- Daftar keyword deteksi (diperluas, tetap konsisten)
--- =========================================================
 local REMOTE_TAGS = {
     "exploit","cheat","detect","ban","kick","flag",
     "validate","integrity","security","anticheat","ac_",
@@ -52,18 +50,44 @@ local SCRIPT_TAGS = {
     "sandbox","restrict","strike","appeal","admin","staff"
 }
 
-local function containsAny(str, tags)
-    if not str then return false end
-    local low = str:lower()
+local function matchName(name, tags)
+    if not name or type(name) ~= "string" then return false end
+    local low = name:lower()
     for i = 1, #tags do
         if low:find(tags[i], 1, true) then return true end
     end
     return false
 end
 
--- =========================================================
--- 1) Hook __namecall
--- =========================================================
+local nameCache = setmetatable({}, { __mode = "k" })
+local function matchObj(obj, tags, key)
+    if not obj then return false end
+    local per = nameCache[obj]
+    if not per then
+        per = {}
+        nameCache[obj] = per
+    end
+    local entry = per[key]
+    local currentName = obj.Name
+    if entry and entry.name == currentName then
+        return entry.value
+    end
+    local r = matchName(currentName, tags)
+    per[key] = { name = currentName, value = r }
+    return r
+end
+
+local fnCache = setmetatable({}, { __mode = "k" })
+local function isACFunction(fn)
+    if type(fn) ~= "function" then return false end
+    local c = fnCache[fn]
+    if c ~= nil then return c end
+    local ok, src = pcall(debug.info, fn, "s")
+    local r = ok and src and matchName(src, SCRIPT_TAGS) or false
+    fnCache[fn] = r
+    return r
+end
+
 do
     local mt = getrawmetatable(game)
     setreadonly(mt, false)
@@ -78,7 +102,7 @@ do
 
         if method == "FireServer" or method == "InvokeServer" then
             local ok, name = pcall(function() return self.Name end)
-            if ok and containsAny(name, REMOTE_TAGS) then
+            if ok and matchName(name, REMOTE_TAGS) then
                 return
             end
         end
@@ -89,27 +113,19 @@ do
     setreadonly(mt, true)
 end
 
--- =========================================================
--- 2) Nuke connections + destroy remote AC + hook __index
--- =========================================================
 do
     local function nukeConnections()
         if not getconnections then return end
         pcall(function()
             for _, conn in ipairs(getconnections(LocalPlayer.CharacterAdded)) do
-                if not checkcaller() then
-                    conn:Disable()
-                end
+                if not checkcaller() then conn:Disable() end
             end
         end)
         pcall(function()
             for _, conn in ipairs(getconnections(LocalPlayer.PlayerGui.ChildAdded)) do
-                if not checkcaller() then
-                    conn:Disable()
-                end
+                if not checkcaller() then conn:Disable() end
             end
         end)
-        -- tambahan: putus koneksi DescendantAdded milik PlayerGui & Character
         pcall(function()
             if LocalPlayer.Character then
                 for _, conn in ipairs(getconnections(LocalPlayer.Character.DescendantAdded)) do
@@ -127,25 +143,16 @@ do
     end
     nukeConnections()
 
-    -- destroy remote AC yang muncul (ReplicatedStorage)
-    ReplicatedStorage.DescendantAdded:Connect(function(obj)
+    local function destroyIfAC(obj)
         if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            if containsAny(obj.Name, REMOTE_TAGS) then
+            if matchName(obj.Name, REMOTE_TAGS) then
                 pcall(function() obj:Destroy() end)
             end
         end
-    end)
+    end
 
-    -- destroy remote AC yang muncul (Workspace & CoreGui, beberapa game taruh di sini)
-    pcall(function()
-        workspace.DescendantAdded:Connect(function(obj)
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                if containsAny(obj.Name, REMOTE_TAGS) then
-                    pcall(function() obj:Destroy() end)
-                end
-            end
-        end)
-    end)
+    ReplicatedStorage.DescendantAdded:Connect(destroyIfAC)
+    pcall(function() workspace.DescendantAdded:Connect(destroyIfAC) end)
 
     LocalPlayer.CharacterAdded:Connect(function()
         task.wait(0.5)
@@ -161,11 +168,8 @@ do
     end)
 end
 
--- =========================================================
--- 3) setmetatable bypass + disable AC scripts + NetworkClient + LocalScript3
--- =========================================================
 task.spawn(function()
-    -- 3a) setmetatable bypass (MiscellaneousController)
+
     pcall(function()
         local _stbl
         _stbl = hookfunction(getrenv().setmetatable, newcclosure(function(tbl, mt)
@@ -179,47 +183,56 @@ task.spawn(function()
         end))
     end)
 
-    -- 3b) disable LocalScript/ModuleScript bernama AC (diperluas)
-    pcall(function()
-        local function _procAC(o)
+    local lockedScripts = setmetatable({}, { __mode = "k" })
+    local function lockScript(o)
+        if not o then return end
+        local cls = o.ClassName
+        if cls ~= "LocalScript" and cls ~= "ModuleScript" then return end
+        if not matchObj(o, SCRIPT_TAGS, "script") then return end
+        pcall(function() o.Disabled = true end)
+        if not lockedScripts[o] then
+            lockedScripts[o] = true
             pcall(function()
-                if o:IsA("LocalScript") or o:IsA("ModuleScript") then
-                    if containsAny(o.Name, SCRIPT_TAGS) then
+                o:GetPropertyChangedSignal("Disabled"):Connect(function()
+                    if not o.Disabled then
                         pcall(function() o.Disabled = true end)
                     end
-                end
+                end)
             end)
         end
+    end
 
-        pcall(function()
-            for _, o in ipairs(game:GetDescendants()) do
-                _procAC(o)
+    local function processObj(o)
+        if not o or not o.Parent then return end
+        local cls = o.ClassName
+        if cls == "LocalScript" or cls == "ModuleScript" then
+            lockScript(o)
+        elseif cls == "RemoteEvent" or cls == "RemoteFunction" then
+            if matchObj(o, REMOTE_TAGS, "remote") then
+                pcall(function() o:Destroy() end)
             end
-        end)
+        end
+    end
 
-        pcall(function() game.DescendantAdded:Connect(_procAC) end)
-    end)
+    for _, o in ipairs(game:GetDescendants()) do
+        processObj(o)
+    end
+    game.DescendantAdded:Connect(processObj)
 
-    -- 3c) NetworkClient: destroy child bernama AC (diperluas)
     pcall(function()
         local _nc = game:GetService("NetworkClient")
         if not _nc then return end
-        _nc.ChildAdded:Connect(function(ch)
-            pcall(function()
-                if containsAny(ch.Name, REMOTE_TAGS) then
-                    pcall(function() ch:Destroy() end)
-                end
-            end)
-        end)
-        -- scan awal
-        for _, ch in ipairs(_nc:GetChildren()) do
-            if containsAny(ch.Name, REMOTE_TAGS) then
+        local function destroyAC(ch)
+            if matchName(ch.Name, REMOTE_TAGS) then
                 pcall(function() ch:Destroy() end)
             end
         end
+        _nc.ChildAdded:Connect(destroyAC)
+        for _, ch in ipairs(_nc:GetChildren()) do
+            destroyAC(ch)
+        end
     end)
 
-    -- 3d) hook fungsi di LocalScript3 yang mengandung TakeTheL/ban/kick
     pcall(function()
         local _rf = game:GetService("ReplicatedFirst")
         local _tgt = _rf:WaitForChild("LocalScript3", 10)
@@ -229,21 +242,17 @@ task.spawn(function()
         for _i = 1, #_gc do
             local _fn = _gc[_i]
             if type(_fn) ~= "function" then continue end
-
             local _ok1, _env = pcall(getfenv, _fn)
             if not _ok1 or type(_env) ~= "table" then continue end
-
             local _ok2, _scr = pcall(function() return rawget(_env, "script") end)
             if not _ok2 or not _scr or typeof(_scr) ~= "Instance" then continue end
             if _scr ~= _tgt then continue end
-
             local _ok4, _consts = pcall(debug.getconstants, _fn)
             if not _ok4 or type(_consts) ~= "table" then continue end
-
             for _j = 1, #_consts do
                 local _c = _consts[_j]
                 if type(_c) == "string" then
-                    if _c:find("TakeTheL") or containsAny(_c, {
+                    if _c:find("TakeTheL") or matchName(_c, {
                         "ban","kick","anticheat","detect","violation",
                         "punish","report","flag","strike","restrict"
                     }) then
@@ -252,6 +261,106 @@ task.spawn(function()
                     end
                 end
             end
+        end
+    end)
+
+    pcall(function()
+        local oldSpawn = task.spawn
+        local oldDefer = task.defer
+        local oldDelay = task.delay
+
+        task.spawn = newcclosure(function(fn, ...)
+            if isACFunction(fn) then return end
+            return oldSpawn(fn, ...)
+        end)
+        task.defer = newcclosure(function(fn, ...)
+            if isACFunction(fn) then return end
+            return oldDefer(fn, ...)
+        end)
+        task.delay = newcclosure(function(t, fn, ...)
+            if isACFunction(fn) then return end
+            return oldDelay(t, fn, ...)
+        end)
+    end)
+
+    pcall(function()
+        local oldResume = coroutine.resume
+        local oldWrap   = coroutine.wrap
+        coroutine.resume = newcclosure(function(co, ...)
+            local ok, fn = pcall(function() return debug.info(co, "f") end)
+            if ok and isACFunction(fn) then return false end
+            return oldResume(co, ...)
+        end)
+        coroutine.wrap = newcclosure(function(fn)
+            if isACFunction(fn) then
+                return function() end
+            end
+            return oldWrap(fn)
+        end)
+    end)
+
+    pcall(function()
+        local oldNew = Instance.new
+        Instance.new = newcclosure(function(className, parent)
+            local inst = oldNew(className, parent)
+            if className == "LocalScript" or className == "ModuleScript" then
+                if matchName(inst.Name, SCRIPT_TAGS) then
+                    pcall(function() inst.Disabled = true end)
+                end
+            elseif className == "RemoteEvent" or className == "RemoteFunction" then
+                if matchName(inst.Name, REMOTE_TAGS) then
+                    pcall(function() inst:SetAttribute("_grief_ac", true) end)
+                end
+            end
+            return inst
+        end)
+    end)
+
+    local scanQueue = {}
+    local scanIdx = 1
+    local SCAN_BUDGET = 150
+    local nextRebuild = 0
+
+    local function rebuildQueue()
+        scanQueue = game:GetDescendants()
+        scanIdx = 1
+    end
+    rebuildQueue()
+
+    RunService.Heartbeat:Connect(function()
+        if scanIdx > #scanQueue then
+            if tick() < nextRebuild then return end
+            rebuildQueue()
+            nextRebuild = tick() + 3
+            return
+        end
+        local budget = SCAN_BUDGET
+        while budget > 0 and scanIdx <= #scanQueue do
+            local o = scanQueue[scanIdx]
+            scanIdx = scanIdx + 1
+            processObj(o)
+            budget = budget - 1
+        end
+    end)
+
+    task.spawn(function()
+        if not getconnections then return end
+        local deadline = tick() + 15
+        local function filterSignal(sig)
+            for _, conn in ipairs(getconnections(sig)) do
+                pcall(function()
+                    local fn = conn.Function
+                    if fn and isACFunction(fn) then conn:Disable() end
+                end)
+            end
+        end
+        while tick() < deadline do
+            pcall(function()
+                filterSignal(RunService.Heartbeat)
+                filterSignal(RunService.RenderStepped)
+                filterSignal(RunService.Stepped)
+            end)
+            task.wait(2)
         end
     end)
 end)
